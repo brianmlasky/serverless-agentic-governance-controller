@@ -23,10 +23,10 @@ concurrency:
 jobs:
   lifecycle:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
-      id-token: write
+      id-token: write  # Required for BOTH GCP and AWS OIDC
 
     steps:
       - name: Checkout
@@ -41,6 +41,7 @@ jobs:
           fi
           echo "✅ Destroy confirmed"
 
+      # ── GCP Authentication ─────────────────────────────────────────
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -50,38 +51,54 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Verify Identity
+      - name: Verify GCP Identity
         run: |
           echo "=== Active Account ==="
           gcloud auth list
-          echo ""
           echo "=== Project ==="
           gcloud config get-value project
 
+      # ── AWS Authentication ─────────────────────────────────────────
+      - name: Authenticate to AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-terraform-role
+          aws-region: us-east-1
+          role-session-name: GitHubActions-Terraform
+
+      - name: Verify AWS Identity
+        run: |
+          echo "=== AWS Caller Identity ==="
+          aws sts get-caller-identity
+
+      # ── Terraform ──────────────────────────────────────────────────
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
+        working-directory: ./terraform/environments/dev-aws
         run: terraform init
-        working-directory: ./terraform
 
       - name: Terraform Plan
         if: inputs.action == 'plan' || inputs.action == 'apply'
-        run: terraform plan -out=tfplan
-        working-directory: ./terraform
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        working-directory: ./terraform/environments/dev-aws
+        run: |
+          terraform plan \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -var="admin_user_name=${{ secrets.AWS_ADMIN_USER_NAME }}" \
+            -out=tfplan
 
       - name: Terraform Apply
         if: inputs.action == 'apply'
+        working-directory: ./terraform/environments/dev-aws
         run: terraform apply -auto-approve tfplan
-        working-directory: ./terraform
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Terraform Destroy
         if: inputs.action == 'destroy'
-        run: terraform destroy -auto-approve
-        working-directory: ./terraform
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        working-directory: ./terraform/environments/dev-aws
+        run: |
+          terraform destroy -auto-approve \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -var="admin_user_name=${{ secrets.AWS_ADMIN_USER_NAME }}"
