@@ -41,3 +41,16 @@ module "aws_iam" {
   gke_oidc_provider_arn = "arn:aws:iam::${var.aws_account_id}:oidc-provider/container.googleapis.com/v1/projects/${var.gcp_project_id}/locations/${var.gcp_region}/clusters/${var.gke_cluster_name}"
   gke_oidc_provider_url = "container.googleapis.com/v1/projects/${var.gcp_project_id}/locations/${var.gcp_region}/clusters/${var.gke_cluster_name}"
 }
+
+# ---------------------------------------------------------------------------
+# Account ID guard - fails plan if injected var != actual caller identity
+# ---------------------------------------------------------------------------
+data "aws_caller_identity" "current" {}
+
+locals {
+  account_id_verified = (
+    var.aws_account_id == data.aws_caller_identity.current.account_id
+    ? var.aws_account_id
+    : tobool("ERROR: aws_account_id var (${var.aws_account_id}) does not match caller identity (${data.aws_caller_identity.current.account_id})")
+  )
+}
