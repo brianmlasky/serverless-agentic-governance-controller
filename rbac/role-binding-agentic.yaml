@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agentic-platform:pod-reader
+  namespace: agentic
+  labels:
+    app.kubernetes.io/part-of: serverless-agentic-platform
+    app.kubernetes.io/component: rbac
+    cost-center: agent-logic
+subjects:
+  - kind: ServiceAccount
+    name: litellm-sa
+    namespace: litellm
+  - kind: ServiceAccount
+    name: litellm-sa
+    namespace: agentic
+roleRef:
+  kind: Role
+  name: agentic-platform:pod-reader
+  apiGroup: rbac.authorization.k8s.io
