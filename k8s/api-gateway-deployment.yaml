@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: api-gateway
-        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/dev-repo/api-gateway:v2.0.5@sha256:6b0cb10d1ec6ae46d98a9e9ae0b8588bde518703db711ba232201c8a4925c192
+        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/dev-repo/api-gateway:v2.0.5@sha256:9cb89ddb3375522e285dfc20d8124f1708362d63622aa8eff65c7037f3a89296
         ports:
         - containerPort: 8080
         env:
