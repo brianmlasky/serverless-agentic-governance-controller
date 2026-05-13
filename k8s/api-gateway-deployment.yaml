@@ -5,8 +5,7 @@ metadata:
   namespace: agentic
   labels:
     app: api-gateway
-    environment: dev
-    cost-center: agent-logic
+    version: v2.0.5
 spec:
   replicas: 1
   selector:
@@ -16,73 +15,41 @@ spec:
     metadata:
       labels:
         app: api-gateway
-        environment: dev
-        cost-center: agent-logic
+        version: v2.0.5
     spec:
-      serviceAccountName: api-gateway-sa
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
       containers:
-        - name: api-gateway
-          image: us-central1-docker.pkg.dev/alert-hall-466720-c0/dev-repo/api-gateway:v2.0.4@sha256:a3e67c3abe6d52a70df73f0510ee6f4f7cf68414035d8e7349046df9305b2cd2
-          ports:
-            - containerPort: 8080
-          env:
-            - name: LITELLM_BASE_URL
-              value: "http://litellm-gateway.litellm.svc.cluster.local:80"
-            - name: LITELLM_MASTER_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: litellm-master-key
-                  key: master-key
-            - name: AGENT_MODEL
-              value: "claude-sonnet"
-            - name: IAP_AUDIENCE
-              value: "/projects/390958881559/global/backendServices/482921328315087641"
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
-              memory: "256Mi"
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 30
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: api-gateway
-  namespace: agentic
-  labels:
-    environment: dev
-    cost-center: agent-logic
-spec:
-  selector:
-    app: api-gateway
-  ports:
-    - port: 80
-      targetPort: 8080
-  type: ClusterIP
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: api-gateway-sa
-  namespace: agentic
-  labels:
-    environment: dev
-    cost-center: agent-logic
-  annotations:
-    iam.gke.io/gcp-service-account: api-gateway@alert-hall-466720-c0.iam.gserviceaccount.com
+      - name: api-gateway
+        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/dev-repo/api-gateway:v2.0.5@sha256:6b0cb10d1ec6ae46d98a9e9ae0b8588bde518703db711ba232201c8a4925c192
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: LITELLM_BASE_URL
+          value: "http://litellm-gateway.litellm.svc.cluster.local:80"
+        - name: LITELLM_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: litellm-master-key
+              key: master-key
+        - name: IAP_AUDIENCE
+          value: "/projects/390958881559/global/backendServices/482921328315087641"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
