@@ -25,7 +25,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: api-gateway
-          image: us-central1-docker.pkg.dev/alert-hall-466720-c0/agentic-platform/api-gateway:v2.0.0@sha256:aa83210813115b30b3adfcf72cdb93683a4547f1a4d263cd57da04ebf20e4996
+          image: us-central1-docker.pkg.dev/alert-hall-466720-c0/dev-repo/api-gateway:v2.0.4@sha256:a3e67c3abe6d52a70df73f0510ee6f4f7cf68414035d8e7349046df9305b2cd2
           ports:
             - containerPort: 8080
           env:
