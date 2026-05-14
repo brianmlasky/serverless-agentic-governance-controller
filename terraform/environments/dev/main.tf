@@ -76,8 +76,8 @@ module "aws_iam" {
   gke_cluster_project  = var.project_id
   gke_cluster_location = var.region
   gke_cluster_name     = var.gke_cluster_name
-  k8s_namespace        = "litellm"
-  k8s_service_account  = "litellm-sa"
+  k8s_namespace        = "agentic"
+  k8s_service_account  = "litellm-wif-sa"
 
 }
 
@@ -139,8 +139,8 @@ module "workload_identity" {
 
   project_id             = var.project_id
   aws_role_arn           = module.aws_iam.role_arn
-  k8s_namespace          = "litellm"
-  k8s_service_account    = "litellm-sa"
+  k8s_namespace          = "agentic"
+  k8s_service_account    = "litellm-wif-sa"
   environment            = var.environment
   gke_cluster_dependency = module.gke_autopilot.cluster_name
 
