@@ -26,11 +26,11 @@ variable "gke_cluster_name" {
 variable "k8s_namespace" {
   description = "Kubernetes namespace of the workload"
   type        = string
-  default     = "litellm"
+  default     = "agentic"
 }
 
 variable "k8s_service_account" {
   description = "Kubernetes service account name"
   type        = string
-  default     = "litellm-sa"
+  default     = "litellm-wif-sa"
 }

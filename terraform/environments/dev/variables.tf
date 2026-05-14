@@ -39,6 +39,7 @@ variable "aws_account_id" {
 variable "gke_cluster_name" {
   description = "Name of the existing GKE cluster (used for AWS OIDC trust policy)"
   type        = string
+  default     = "dev-gke-cluster"
 }
 
 variable "github_repo" {
