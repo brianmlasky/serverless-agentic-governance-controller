@@ -1,43 +1,37 @@
 import os
 import logging
 from fastapi import HTTPException, Request
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token
 
 logger = logging.getLogger(__name__)
 
-IAP_AUDIENCE = os.getenv("IAP_AUDIENCE", "")
+LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "")
+BYPASS_AUTH = os.getenv("BYPASS_AUTH", "false").lower() == "true"
 
 
 async def verify_iap_jwt(request: Request) -> dict:
     """
-    Validates the IAP JWT passed in the X-Goog-IAP-JWT-Assertion header.
-    Raises HTTP 401 if the token is missing or invalid.
+    Validates Bearer token against LITELLM_MASTER_KEY.
+    Function name retained for import compatibility with main.py.
     """
-    if not IAP_AUDIENCE:
-        logger.warning("IAP_AUDIENCE not set — skipping JWT validation")
+    if BYPASS_AUTH:
+        logger.warning("BYPASS_AUTH=true — skipping authentication (dev only)")
         return {}
 
-    token = request.headers.get("X-Goog-IAP-JWT-Assertion")
-    if not token:
+    if not LITELLM_MASTER_KEY:
+        logger.error("LITELLM_MASTER_KEY not configured")
+        raise HTTPException(status_code=503, detail="Auth not configured")
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
         raise HTTPException(
             status_code=401,
-            detail="Missing IAP assertion header"
+            detail="Missing or malformed Authorization header. Expected: Bearer <key>"
         )
 
-    try:
-        claims = id_token.verify_token(
-            token,
-            google_requests.Request(),
-            audience=IAP_AUDIENCE,
-            certs_url="https://www.gstatic.com/iap/verify/public_key"
-        )
-        logger.info("IAP JWT verified for user: %s", claims.get("email"))
-        return claims
+    token = auth_header.removeprefix("Bearer ")
+    if token != LITELLM_MASTER_KEY:
+        logger.warning("Invalid bearer token from %s", request.client.host)
+        raise HTTPException(status_code=403, detail="Invalid API key")
 
-    except Exception as exc:
-        logger.error("IAP JWT verification failed: %s", exc)
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid or expired IAP token"
-        )
+    logger.info("Authenticated request from %s", request.client.host)
+    return {"authenticated": True, "method": "bearer"}
