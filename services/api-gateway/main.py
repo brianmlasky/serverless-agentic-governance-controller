@@ -9,12 +9,13 @@ from pydantic import BaseModel
 from typing import Optional, List, Any
 from security import verify_iap_jwt
 
-app = FastAPI(title="Agentic Platform API Gateway", version="2.0.5")
+app = FastAPI(title="Agentic Platform API Gateway", version="2.0.7")
 
 LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "http://litellm-gateway.agentic.svc.cluster.local:80")
 LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "")
 AGENT_MODEL = os.getenv("AGENT_MODEL", "claude-sonnet")
 COST_CENTER = os.getenv("COST_CENTER", "agentic-platform.dev")
+APP_VERSION = os.getenv("APP_VERSION", "unknown")
 
 # ---------------------------------------------------------------------------
 # Models
@@ -220,7 +221,7 @@ async def llm_chat(messages: list, tools: list, model: str) -> dict:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "api-gateway", "version": "2.0.5"}
+    return {"status": "ok", "service": "api-gateway", "version": APP_VERSION}
 
 # ---------------------------------------------------------------------------
 # GET /v1/models — OpenAI-compatible discovery, no IAP required
