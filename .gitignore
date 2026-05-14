@@ -9,6 +9,7 @@
 
 # GCP Credentials - NEVER COMMIT
 *.json
+!.devcontainer/devcontainer.json
 !package.json
 !package-lock.json
 ~/.gcp-credentials/

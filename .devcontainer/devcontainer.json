@@ -1,0 +1,9 @@
+{
+  "name": "serverless-agentic-platform",
+  "features": {
+    "ghcr.io/devcontainers/features/google-cloud-cli:1": {
+      "version": "latest",
+      "installGkeGcloudAuthPlugin": true
+    }
+  }
+}
