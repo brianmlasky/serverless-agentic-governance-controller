@@ -4,7 +4,7 @@ metadata:
   name: api-gateway-backend-config
   namespace: agentic
 spec:
-  timeoutSec: 30
+  timeoutSec: 300
   connectionDraining:
     drainingTimeoutSec: 60
   healthCheck:
