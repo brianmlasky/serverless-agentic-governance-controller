@@ -15,10 +15,7 @@ from security import verify_iap_jwt
 # Database
 # ---------------------------------------------------------------------------
 
-DATABASE_URL = (
-    "postgresql://litellm-user:REDACTED"
-    "@127.0.0.1:5432/litellm"
-)
+DATABASE_URL = os.environ["DATABASE_URL"]  # injected via K8s secret
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
