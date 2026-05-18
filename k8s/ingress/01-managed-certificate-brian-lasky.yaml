@@ -2,10 +2,12 @@ apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
 metadata:
   name: api-gateway-cert
-  namespace: agentic
+  namespace: litellm
   labels:
     app: api-gateway
-    component: tls
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/component: tls
+    app.kubernetes.io/part-of: serverless-agentic-platform
     managed-by: gke-ingress
 spec:
   domains:

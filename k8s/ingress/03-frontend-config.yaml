@@ -2,10 +2,12 @@ apiVersion: networking.gke.io/v1beta1
 kind: FrontendConfig
 metadata:
   name: api-gateway-frontend
-  namespace: agentic
+  namespace: litellm
   labels:
     app: api-gateway
-    component: ingress
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: serverless-agentic-platform
     managed-by: gke-ingress
 spec:
   redirectToHttps:
