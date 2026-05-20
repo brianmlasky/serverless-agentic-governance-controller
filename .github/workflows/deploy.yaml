@@ -15,6 +15,8 @@ jobs:
         run: pip install pyyaml
       - name: Validate AI Infrastructure
         run: python scripts/validate_litellm.py
+      - name: Install GKE Auth Plugin
+        run: sudo apt-get update && sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
       - name: Deploy
         env:
           KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
