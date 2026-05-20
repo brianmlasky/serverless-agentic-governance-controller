@@ -27,6 +27,10 @@ spec:
       containers:
       - name: api-gateway
         image: us-central1-docker.pkg.dev/alert-hall-466720-c0/agentic-platform/api-gateway:v2.1.0-6130474
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
         ports:
         - containerPort: 8080
         env:
