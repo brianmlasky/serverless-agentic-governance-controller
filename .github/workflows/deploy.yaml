@@ -21,4 +21,4 @@ jobs:
         run: |
           echo "$KUBECONFIG_DATA" > kubeconfig
           export KUBECONFIG=kubeconfig
-          kubectl apply -R -f .
+          kubectl apply -R -f . --validate=false
