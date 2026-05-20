@@ -7,360 +7,92 @@ An event-driven controller that prevents "token runaway" in LLM applications by 
 ---
 
 ## 🎯 Problem
-
 When you deploy LLM agents on Kubernetes:
-- A single misconfigured prompt loop can cost $10k+ in minutes
-- By the time you see the bill, damage is done
-- You have no real-time controls to stop it
+- A single misconfigured prompt loop can cost $10k+ in minutes.
+- By the time you see the bill, the damage is done.
+- You lack real-time infrastructure controls to halt runaway AI processes.
 
 ## ✅ Solution
-
-This controller:
-1. **Detects** token usage in real-time
-2. **Evaluates** against budget policies
-3. **Enforces** via Kyverno (pre-execution) + RBAC
-4. **Remediates** autonomously (kill-switch pod deletion)
-5. **Audits** every decision for compliance
+This controller acts as an automated "Fiscal SecOps" layer:
+1. **Detects:** Monitors token/cost telemetry in real-time.
+2. **Evaluates:** Compares usage against configurable budget policies.
+3. **Enforces:** Integrates Kyverno admission control to gate new deployments.
+4. **Remediates:** Autonomously executes "kill-switch" pod deletions for violators.
+5. **Audits:** Generates a compliance trail for every fiscal decision.
 
 ---
 
-## 🚀 Quick Start
+## 🏗️ Architecture
+![Architecture Diagram](assets/architecture.png)
+
+## 📦 Key Components
+
+| Component | Purpose | Tech |
+| :--- | :--- | :--- |
+| **Event Ingestion** | Receive token/cost signals | Python httpx, event queue |
+| **Policy Engine** | Check budget & quotas | Custom Evaluator Logic |
+| **Admission Control** | Pre-execution security gates | Kyverno ClusterPolicy |
+| **Remediation** | Terminate expensive pods | Kubernetes API |
+| **State Persistence** | Restart-safe decisions | ConfigMap Snapshots |
+| **Observability** | Structured logging & auditing | JSON logs, Prometheus |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- GKE 1.27+ with Workload Identity
-- `kubectl`, `gcloud` CLI
-- Cluster admin access
+- GKE 1.27+ with Workload Identity enabled.
+- `kubectl`, `gcloud`, and `helm` CLI tools.
 
-### Deploy (3 steps)
-
+### Deployment (Quick Start)
 ```bash
 # 1. Clone & navigate
-git clone https://github.com/brianmlasky/serverless-agentic-platform.git
+git clone [https://github.com/brianmlasky/serverless-agentic-platform.git](https://github.com/brianmlasky/serverless-agentic-platform.git)
 cd serverless-agentic-platform
 
-# 2. Set environment
-export PROJECT_ID=$(gcloud config get-value project)
-export CLUSTER_NAME="your-cluster"
-export REGION="us-central1"
-
-# 3. Install
+# 2. Deploy infrastructure & controller
 bash scripts/install.sh
 
-# Verify
-kubectl get pods -n governance-system
+🔐 Security & RBAC
+Built on the principle of Least Privilege:
 
-Test It
-bash
+Controller Permissions: Limited to reading/deleting pods in governed=true namespaces.
 
+Workload Identity: No long-lived GCP service account keys; utilizes ephemeral GKE KSA-GSA binding.
 
-# Deploy a test workload
-kubectl create namespace test-llm
-kubectl label namespace test-llm governed=true cost-center=team-a
+Vulnerability Scanning: CI/CD pipeline integrated with Trivy and Bandit to ensure secure supply chain.
 
-# Apply test pod
-kubectl apply -f examples/test-pod.yaml
+🧪 Testing & Validation
+The project includes a comprehensive test suite to ensure platform reliability:
 
-# Watch governance in action
-kubectl logs -n governance-system -f -l app=governance-controller
-🏗️ Architecture
+Unit Tests: pytest with >80% coverage on evaluation logic.
 
+Integration Tests: Validates pod lifecycle management and ConfigMap state.
 
-[AI Workloads] 
-    ↓ telemetry (tokens, cost)
-[Governance Controller] (Python AsyncIO)
-    ↓ policy evaluation (budget, quota)
-[Kyverno + RBAC] (admission control)
-    ↓ enforcement decision
-[Remediation] (pod deletion, quarantine)
-    ↓
-[Audit Log] (compliance trail)
-Key Components
+Load Tests: Validates event processing latency and throughput under high QPS.
 
-
-
-Component	Purpose	Tech
-Event Ingestion	Receive token/cost signals	Python httpx, event queue
-Policy Evaluation	Check budget & quotas	Custom evaluator logic
-Admission Control	Pre-execution gates	Kyverno ClusterPolicy
-Remediation	Kill expensive pods	Kubernetes API delete
-State Persistence	Restart-safe decisions	ConfigMap snapshots
-Observability	Structured logging & metrics	JSON logs, Prometheus
-📦 Installation
-Step 1: Verify Prerequisites
-bash
-
-
-kubectl version --short
-# Expected: v1.27+
-
-gcloud container clusters describe $CLUSTER_NAME --region=$REGION | grep workloadPool
-# Expected: workloadPool: PROJECT_ID.svc.id.goog
-Step 2: Install Kyverno (Policy Engine)
-bash
-
-
-helm repo add kyverno https://kyverno.github.io/kyverno/
-helm repo update
-
-helm install kyverno kyverno/kyverno \
-  --namespace kyverno \
-  --create-namespace \
-  --version 1.10.0
-Step 3: Set Up Workload Identity
-bash
-
-
-# Create GCP service account
-gcloud iam service-accounts create governance-controller \
-  --display-name="Governance Controller"
-
-# Grant minimal permissions
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:governance-controller@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/logging.logWriter"
-
-# Create namespace & KSA
-kubectl create namespace governance-system
-kubectl create serviceaccount governance-controller -n governance-system
-
-# Bind KSA to GSA
-gcloud iam service-accounts add-iam-policy-binding \
-  "governance-controller@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role roles/iam.workloadIdentityUser \
-  --member "serviceAccount:${PROJECT_ID}.svc.id.goog[governance-system/governance-controller]"
-
-# Annotate KSA
-kubectl patch serviceaccount governance-controller \
-  -n governance-system \
-  -p "{\"metadata\": {\"annotations\": {\"iam.gke.io/gcp-service-account\": \"governance-controller@${PROJECT_ID}.iam.gserviceaccount.com\"}}}"
-Step 4: Deploy Controller
-bash
-
-
-kubectl apply -f k8s/governance/rbac.yaml
-kubectl apply -f k8s/governance/controller-deployment.yaml
-kubectl apply -f k8s/policies/
-Step 5: Label Namespaces
-bash
-
-
-kubectl label namespace default governed=true cost-center=platform
-kubectl label namespace test-llm governed=true cost-center=engineering
-⚙️ Configuration
-Environment Variables
-bash
-
-
-# Budget enforcement
-BUDGET_THRESHOLD_USD=1000            # Monthly limit
-WARNING_THRESHOLD_PERCENT=75         # Alert at 75%
-KILL_SWITCH_ENABLED=true             # Auto-terminate violators
-
-# Event processing
-BATCH_SIZE=10
-BATCH_TIMEOUT_SECONDS=5
-
-# Kubernetes
-KUBECONFIG=/var/run/secrets/kubernetes.io/serviceaccount/
-WATCH_INTERVAL_SECONDS=30
-STATE_CONFIGMAP=governance-state
-STATE_NAMESPACE=governance-system
-
-# Observability
-LOG_LEVEL=INFO
-LOG_FORMAT=json
-METRICS_PORT=8080
-ConfigMap Setup
-bash
-
-
-kubectl create configmap governance-config -n governance-system \
-  --from-literal=BUDGET_THRESHOLD_USD=1000 \
-  --from-literal=KILL_SWITCH_ENABLED=true \
-  --from-literal=LOG_LEVEL=INFO
-💡 Usage
-How It Works
-Your workload emits telemetry:
-json
-
-
-{
-  "pod_name": "llm-agent-001",
-  "namespace": "production",
-  "tokens_used": 5432,
-  "cost_usd": 0.54,
-  "timestamp": "2025-01-15T14:32:10Z"
-}
-Controller receives and evaluates:
-
-Checks cumulative cost against budget
-Evaluates quota limits
-Assesses risk (anomaly detection)
-If policy violated:
-
-Kyverno blocks new pod creation
-Controller deletes offending pod
-Event logged for audit
-Result: Cost overage prevented in <100ms
-
-Example: Governance in Action
-bash
-
-
-# Deploy a compliant workload
-kubectl apply -f examples/workload-compliant.yaml
-# → Pod runs normally, cost tracked
-
-# Deploy a runaway workload (exceeds budget)
-kubectl apply -f examples/workload-runaway.yaml
-# → Controller detects overage
-# → Pod terminated immediately
-# → Audit log created
-
-# Check governance logs
-kubectl logs -n governance-system -l app=governance-controller | grep "runaway"
-🧪 Testing
-Unit Tests
-bash
-
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run tests
-pytest src/tests/ -v --cov=src --cov-report=term-missing
-
-# Expected: >80% coverage, all tests pass
-Integration Tests (Requires GKE)
-bash
-
-
-pytest src/tests/test_integration.py -v -s
-
-# Validates:
-# - Pod creation/deletion
-# - ConfigMap state persistence
-# - Kyverno policy enforcement
-# - RBAC authorization
-Load Test
-bash
-
-
-bash scripts/load-test.sh --duration=5m --qps=100
-
-# Measures:
-# - Event processing latency (p50, p95, p99)
-# - Controller memory/CPU
-# - Throughput (events/sec)
-🔐 Security
-RBAC Principle: Least Privilege
-Controller can only:
-
-Read pods in namespaces labeled governed=true
-Delete pods (for kill-switch)
-Patch pods (for quarantine labels)
-Read ConfigMaps in governance-system
-Controller cannot:
-
-Access secrets
-Modify RBAC rules
-Modify Kyverno policies
-Escalate privileges
-Workload Identity
-No GCP service account keys stored in cluster
-KSA bound to GSA via GKE Workload Identity
-Minimal IAM roles: logging.logWriter, monitoring.metricWriter
-Vulnerability Scanning
-bash
-
-
-# Scan dependencies
-safety check
-
-# Scan code for issues
-bandit -r src/
-
-# Scan Docker image
-trivy image governance-controller:latest --severity HIGH,CRITICAL
-📂 Project Structure
-
-
-serverless-agentic-platform/
-├── README.md
-├── LICENSE (Apache 2.0)
-├── CONTRIBUTING.md
-├── SECURITY.md
-├── requirements.txt
-├── Dockerfile
-├── Makefile
-├── .github/workflows/
-│   ├── ci.yml              # Unit tests + linting
-│   ├── security.yml        # Bandit, Semgrep, dependencies
-│   └── deploy.yml          # Build & push to GCR
-├── scripts/
-│   ├── install.sh          # One-command deployment
-│   ├── uninstall.sh        # Cleanup
-│   ├── load-test.sh        # Load testing
-│   └── demo.sh             # End-to-end walkthrough
-├── k8s/
-│   └── governance/
-│       ├── rbac.yaml
-│       ├── controller-deployment.yaml
-│       ├── state-configmap.yaml
-│       └── policies/
-│           ├── admission-policy.yaml  # Kyverno ClusterPolicy
-│           └── audit-policy.yaml
-├── src/
-│   ├── controller.py       # Main async event loop
-│   ├── config.py           # Configuration
-│   └── governance/
-│       ├── evaluator.py    # Budget/quota logic
-│       ├── enforcer.py     # Remediation
-│       ├── state.py        # ConfigMap persistence
-│       └── models.py       # Data classes
-│   └── tests/
-│       ├── test_evaluator.py
-│       ├── test_enforcer.py
-│       ├── test_state.py
-│       ├── test_integration.py
-│       └── test_load.py
-└── examples/
-    ├── workload-compliant.yaml
-    ├── workload-runaway.yaml
-    └── test-pod.yaml
-🤝 Contributing
-See CONTRIBUTING.md [blocked] for guidelines.
-
-Code Standards
-bash
-
-
-# Format & lint before commit
-black src/ --line-length=100
-isort src/
-flake8 src/ --max-line-length=100
-mypy src/ --ignore-missing-imports
-pytest src/tests/ -q
+Bash
+# Run full suite
+pytest src/tests/ -v --cov=src
 🗺️ Roadmap
- Multi-cloud (AWS EKS, Azure AKS)
- ML-driven anomaly detection
- Grafana dashboard templates
- Slack/Teams alerts
- Cost allocation by team
- Budget forecasting
-📄 License
-Apache 2.0 — see LICENSE [blocked]
+[ ] Multi-cloud support (AWS EKS, Azure AKS)
+
+[ ] ML-driven anomaly detection
+
+[ ] Automated Grafana dashboard generation
+
+[ ] Cost forecasting integration
 
 👨‍💼 Author
-Brian Lasky — Cloud Architect & SRE
-[GitHub](https://github.com/brianmlasky)| [LinkedIn](https://www.linkedin.com/in/brian-lasky-67464086/)
-[Portfolio](https://www.brian-lasky.com/)
+Brian Lasky | Cloud Architect & SRE
+Specializing in Agentic Infrastructure, Fiscal Governance, and Scalable Cloud Systems.
 
-🆘 Support
-Issues: GitHub Issues
-Docs: See docs/ [blocked] folder
-Security: SECURITY.md [blocked]
-Status: Production Ready | Last Updated: January 2025 | Maintained: Yes
+Website
 
+LinkedIn
 
+GitHub
 
+Status: Production Ready | Last Updated: May 2026
+# 3. Verify deployment
+kubectl get pods -n governance-system
