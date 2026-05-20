@@ -1,5 +1,6 @@
 import yaml
 import sys
+import os
 
 def validate_config(path):
     if not os.path.exists(path):
@@ -7,10 +8,20 @@ def validate_config(path):
         return False
     with open(path, 'r') as f:
         try:
-            config = yaml.safe_load(f)
+            # 1. Load the Kubernetes ConfigMap
+            k8s_config = yaml.safe_load(f)
+            # 2. Extract the actual LiteLLM config string
+            litellm_raw = k8s_config.get('data', {}).get('config.yaml', '')
+            if not litellm_raw:
+                print("Error: 'data.config.yaml' missing in ConfigMap.")
+                return False
+            
+            # 3. Parse the nested LiteLLM configuration
+            config = yaml.safe_load(litellm_raw)
             if 'model_list' not in config:
                 print("Error: 'model_list' missing in LiteLLM config.")
                 return False
+                
             print(f"Validation successful for {path}")
             return True
         except Exception as e:
@@ -18,6 +29,5 @@ def validate_config(path):
             return False
 
 if __name__ == "__main__":
-    import os
     if not validate_config('terraform/k8s/litellm-config.yaml'):
         sys.exit(1)
