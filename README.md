@@ -6,13 +6,6 @@ An autonomous, event-driven SRE platform designed to enforce fiscal guardrails o
 ## Architecture
 ![Architecture Diagram](assets/architecture.png)
 
-    AG -- "1. Logs Event" --> CM
-    GC -- "2. Polls State" --> CM
-    GC -- "3. Calculates Spend" --> GC
-    GC -- "4. Threshold Breach" --> K8S
-    K8S -- "5. Kill/Scale Command" --> TG
-    GC -- "6. Emit Telemetry" --> Logs
-
 ## Key Features
 - **Fiscal SecOps:** Real-time token/cost tracking for LLM tool executions.
 - **Autonomous Remediation:** Automated kill-switch logic integrated with the Kubernetes API to terminate budget-breaching pods.
