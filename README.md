@@ -48,5 +48,14 @@ graph TD
 3. **Deploy Controller:** `kubectl apply -f k8s/litellm/governance-controller.yaml`
 
 ---
+## Connect
+**Brian Lasky** | Cloud Architect & SRE
+*Specializing in Agentic Infrastructure, Fiscal Governance, and Scalable Cloud Systems.*
+
+- [Website](https://brian-lasky.com)
+- [LinkedIn](https://www.linkedin.com/in/brian-lasky-67464086/)
+- [GitHub](https://github.com/brianmlasky)
+
+---
 ## Project Highlights
 *Engineered to solve the "Token Runaway" problem in high-scale AI inference environments.*
