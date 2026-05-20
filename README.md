@@ -1,10 +1,5 @@
 # Serverless Agentic Governance Controller
 
-[![CI/Lint/Test](https://github.com/brianmlasky/serverless-agentic-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/brianmlasky/serverless-agentic-platform/actions/workflows/ci.yml)
-[![Security Scan](https://github.com/brianmlasky/serverless-agentic-platform/actions/workflows/security.yml/badge.svg)](https://github.com/brianmlasky/serverless-agentic-platform/actions/workflows/security.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-
 **Real-time cost guardrails for AI workloads on GKE**
 
 An event-driven controller that prevents "token runaway" in LLM applications by enforcing budget policies and autonomously terminating expensive pods. Built with Python AsyncIO, Kyverno admission control, and Kubernetes RBAC.
