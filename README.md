@@ -1,29 +1,11 @@
-# Serverless Agentic Governance Controller
+Serverless Agentic Governance Controller (SAGC)
+1. Overview
+The Serverless Agentic Governance Controller (SAGC) is an active middleware proxy engineered to provide in-flight fiscal and security governance for autonomous, agentic AI workloads. By decoupling governance policy from the inference engine, the SAGC ensures that autonomous systems operate within strictly defined resource and fiscal constraints.
 
-**Real-time cost guardrails for AI workloads on GKE**
+2. Technical Architecture
+The SAGC functions as an Admission Control Middleware, intercepting inference requests to validate fiscal authorization before execution.
 
-An event-driven controller that prevents "token runaway" in LLM applications by enforcing budget policies and autonomously terminating expensive pods. Built with Python AsyncIO, Kyverno admission control, and Kubernetes RBAC.
-
----
-
-## 🎯 Problem
-When you deploy LLM agents on Kubernetes:
-- A single misconfigured prompt loop can cost $10k+ in minutes.
-- By the time you see the bill, the damage is done.
-- You lack real-time infrastructure controls to halt runaway AI processes.
-
-## ✅ Solution
-This controller acts as an automated "Fiscal SecOps" layer:
-1. **Detects:** Monitors token/cost telemetry in real-time.
-2. **Evaluates:** Compares usage against configurable budget policies.
-3. **Enforces:** Integrates Kyverno admission control to gate new deployments.
-4. **Remediates:** Autonomously executes "kill-switch" pod deletions for violators.
-5. **Audits:** Generates a compliance trail for every fiscal decision.
-
----
-
-## 🏗️ Architecture
-
+Code snippet
 graph LR
     User[AI Agent/User] --> Proxy[Governance Controller]
     subgraph "Control Plane"
@@ -33,75 +15,49 @@ graph LR
     end
     Proxy --> Metrics[Prometheus Metrics]
     Budget -.-> Store[budget.json]
+Key Engineering Pillars
+Fail-Closed Security: Defaults to blocking traffic if policy validation fails or the budget store is inaccessible, preventing unauthorized cost overruns.
 
-## 📦 Key Components
+Atomic State Consistency: Utilizes atomic I/O operations (f.seek / f.truncate) to maintain budget integrity in high-concurrency environments.
 
-| Component | Purpose | Tech |
-| :--- | :--- | :--- |
-| **Event Ingestion** | Receive token/cost signals | Python httpx, event queue |
-| **Policy Engine** | Check budget & quotas | Custom Evaluator Logic |
-| **Admission Control** | Pre-execution security gates | Kyverno ClusterPolicy |
-| **Remediation** | Terminate expensive pods | Kubernetes API |
-| **State Persistence** | Restart-safe decisions | ConfigMap Snapshots |
-| **Observability** | Structured logging & auditing | JSON logs, Prometheus |
+Fiscal Observability: Built-in Prometheus instrumentation provides real-time "Token Burn Rate" telemetry, enabling proactive alerting before budget exhaustion.
 
----
+Policy-as-Code (PaC): Decouples governance logic from application code, allowing fiscal policies to be updated, versioned, and audited via Git.
 
-## 🚀 Getting Started
+3. Quick Start
+This project utilizes a standardized Makefile to simplify local development and operational setup.
 
-### Prerequisites
-- GKE 1.27+ with Workload Identity enabled.
-- `kubectl`, `gcloud`, and `helm` CLI tools.
+Prerequisites
+Python 3.10+
 
-### Deployment (Quick Start)
-```bash
-# 1. Clone & navigate
-git clone [https://github.com/brianmlasky/serverless-agentic-platform.git](https://github.com/brianmlasky/serverless-agentic-platform.git)
-cd serverless-agentic-platform
+pip
 
-# 2. Deploy infrastructure & controller
-bash scripts/install.sh
-
-🔐 Security & RBAC
-Built on the principle of Least Privilege:
-
-Controller Permissions: Limited to reading/deleting pods in governed=true namespaces.
-
-Workload Identity: No long-lived GCP service account keys; utilizes ephemeral GKE KSA-GSA binding.
-
-Vulnerability Scanning: CI/CD pipeline integrated with Trivy and Bandit to ensure secure supply chain.
-
-🧪 Testing & Validation
-The project includes a comprehensive test suite to ensure platform reliability:
-
-Unit Tests: pytest with >80% coverage on evaluation logic.
-
-Integration Tests: Validates pod lifecycle management and ConfigMap state.
-
-Load Tests: Validates event processing latency and throughput under high QPS.
-
+Setup
 Bash
-# Run full suite
-pytest src/tests/ -v --cov=src
-🗺️ Roadmap
-[ ] Multi-cloud support (AWS EKS, Azure AKS)
+# Install dependencies
+make install
 
-[ ] ML-driven anomaly detection
+# Start the governance controller locally
+make run
+4. Operational Telemetry
+The SAGC exposes a standard /metrics endpoint for integration with Prometheus and Grafana.
 
-[ ] Automated Grafana dashboard generation
+Metrics Exposed:
 
-[ ] Cost forecasting integration
+agentic_token_usage_total: Cumulative token consumption.
 
-👨‍💼 Author
-Brian Lasky | Cloud Architect & SRE
-Specializing in Agentic Infrastructure, Fiscal Governance, and Scalable Cloud Systems.
+agentic_budget_limit: Configured fiscal threshold.
 
-Website
+Example Metric Output:
 
-LinkedIn
+Plaintext
+agentic_token_usage_total 1500.0
+agentic_budget_limit 5000.0
+5. Roadmap & Future Enhancements
+Distributed State: Migration from local file-based storage to Redis for sub-millisecond gate latency in multi-replica deployments.
 
-GitHub
+CI/CD Pipeline: Automated integration testing using GitHub Actions to validate policy changes before deployment.
 
-Status: Production Ready | Last Updated: May 2026
-# 3. Verify deployment
-kubectl get pods -n governance-system
+K8s Integration: Development of a Kubernetes Admission Controller to inject SAGC as a sidecar proxy for existing Agentic workloads.
+
+Author: Brian Mitchell Lasky | Senior SRE | Agentic AI Infrastructure & Fiscal Governance
