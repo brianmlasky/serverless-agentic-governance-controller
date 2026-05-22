@@ -5,6 +5,16 @@ The Serverless Agentic Governance Controller (SAGC) is an active middleware prox
 2. Technical Architecture
 The SAGC functions as an Admission Control Middleware, intercepting inference requests to validate fiscal authorization before execution.
 
+graph LR
+    User[AI Agent] --> Proxy[Governance Controller]
+    subgraph "Control Plane"
+        Proxy --> Budget{Policy Check}
+        Budget -->|Authorized| Upstream[Inference API]
+        Budget -->|Denied| Error[403 Forbidden]
+    end
+    Proxy --> Metrics[Prometheus Metrics]
+    Budget -.-> Store[budget.json]
+
 Code snippet
 graph LR
     User[AI Agent/User] --> Proxy[Governance Controller]
