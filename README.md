@@ -23,7 +23,16 @@ This controller acts as an automated "Fiscal SecOps" layer:
 ---
 
 ## 🏗️ Architecture
-![Architecture Diagram](assets/architecture.png)
+
+graph LR
+    User[AI Agent/User] --> Proxy[Governance Controller]
+    subgraph "Control Plane"
+        Proxy --> Budget{Policy Check}
+        Budget -->|Authorized| Upstream[Inference API]
+        Budget -->|Denied| Error[403 Forbidden]
+    end
+    Proxy --> Metrics[Prometheus Metrics]
+    Budget -.-> Store[budget.json]
 
 ## 📦 Key Components
 
