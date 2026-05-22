@@ -1,73 +1,37 @@
-Serverless Agentic Governance Controller (SAGC)
-1. Overview
-The Serverless Agentic Governance Controller (SAGC) is an active middleware proxy engineered to provide in-flight fiscal and security governance for autonomous, agentic AI workloads. By decoupling governance policy from the inference engine, the SAGC ensures that autonomous systems operate within strictly defined resource and fiscal constraints.
+# Serverless Agentic Governance Controller (SAGC)
 
-2. Technical Architecture
-The SAGC functions as an Admission Control Middleware, intercepting inference requests to validate fiscal authorization before execution.
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=Prometheus&logoColor=white)
 
-graph LR
-    User[AI Agent] --> Proxy[Governance Controller]
-    subgraph "Control Plane"
-        Proxy --> Budget{Policy Check}
-        Budget -->|Authorized| Upstream[Inference API]
-        Budget -->|Denied| Error[403 Forbidden]
-    end
-    Proxy --> Metrics[Prometheus Metrics]
-    Budget -.-> Store[budget.json]
+**Active governance and fiscal oversight for autonomous AI workloads.**
 
-Code snippet
-graph LR
-    User[AI Agent/User] --> Proxy[Governance Controller]
-    subgraph "Control Plane"
-        Proxy --> Budget{Policy Check}
-        Budget -->|Authorized| Upstream[Inference API]
-        Budget -->|Denied| Error[403 Forbidden]
-    end
-    Proxy --> Metrics[Prometheus Metrics]
-    Budget -.-> Store[budget.json]
-Key Engineering Pillars
-Fail-Closed Security: Defaults to blocking traffic if policy validation fails or the budget store is inaccessible, preventing unauthorized cost overruns.
+---
 
-Atomic State Consistency: Utilizes atomic I/O operations (f.seek / f.truncate) to maintain budget integrity in high-concurrency environments.
+## Architecture Overview
+The SAGC functions as an **Admission Control Middleware**, intercepting inference requests to validate fiscal authorization in real-time.
 
-Fiscal Observability: Built-in Prometheus instrumentation provides real-time "Token Burn Rate" telemetry, enabling proactive alerting before budget exhaustion.
+![SAGC Architecture Diagram](./assets/sagc-architecture.jpg)
 
-Policy-as-Code (PaC): Decouples governance logic from application code, allowing fiscal policies to be updated, versioned, and audited via Git.
+## Core Capabilities
+* **Fail-Closed Security:** Defaults to blocking traffic if policy validation fails or the budget store is inaccessible.
+* **Fiscal Observability:** Built-in Prometheus instrumentation provides real-time "Token Burn Rate" telemetry.
+* **Atomic State Consistency:** Thread-safe, atomic I/O operations ensure budget integrity.
+* **Policy-as-Code:** Governance logic is decoupled from business logic, allowing for Git-based auditing.
 
-3. Quick Start
-This project utilizes a standardized Makefile to simplify local development and operational setup.
-
-Prerequisites
-Python 3.10+
-
-pip
-
-Setup
-Bash
+## Quick Start
+```bash
 # Install dependencies
 make install
 
-# Start the governance controller locally
+# Start the governance controller
 make run
-4. Operational Telemetry
-The SAGC exposes a standard /metrics endpoint for integration with Prometheus and Grafana.
 
-Metrics Exposed:
+Resilience & Operational Readiness
+This controller is designed for high-availability, cloud-native environments, reflecting enterprise-grade architectural standards.
 
-agentic_token_usage_total: Cumulative token consumption.
+Auditability: Budget states are persisted as version-controlled artifacts.
 
-agentic_budget_limit: Configured fiscal threshold.
+Scalability: Designed for sidecar container deployment within Kubernetes clusters.
 
-Example Metric Output:
-
-Plaintext
-agentic_token_usage_total 1500.0
-agentic_budget_limit 5000.0
-5. Roadmap & Future Enhancements
-Distributed State: Migration from local file-based storage to Redis for sub-millisecond gate latency in multi-replica deployments.
-
-CI/CD Pipeline: Automated integration testing using GitHub Actions to validate policy changes before deployment.
-
-K8s Integration: Development of a Kubernetes Admission Controller to inject SAGC as a sidecar proxy for existing Agentic workloads.
-
-Author: Brian Mitchell Lasky | Senior SRE | Agentic AI Infrastructure & Fiscal Governance
+Maintained by Brian Mitchell Lasky | Senior SRE
