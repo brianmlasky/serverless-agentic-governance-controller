@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+  labels:
+    cost-center: research-dev
+  name: postgres-db
+  namespace: litellm
+spec:
+  selector:
+    matchLabels:
+      app: postgres-db
+  template:
+    metadata:
+      annotations:
+        iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+      labels:
+        app: postgres-db
+        cost-center: research-dev
+    spec:
+      containers:
+      - image: postgres:15
+        name: postgres
+        securityContext:
+          privileged: false
+      serviceAccountName: litellm-sa

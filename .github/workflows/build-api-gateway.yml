@@ -107,8 +107,10 @@ jobs:
           grep -E "image:|version:|APP_VERSION" k8s/api-gateway-deployment.yaml
 
       - name: Apply manifest
-        run: kubectl apply -f k8s/api-gateway-deployment.yaml
-
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/api-gateway-deployment.yaml
+          
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/api-gateway \

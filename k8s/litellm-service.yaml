@@ -11,7 +11,7 @@ spec:
   selector:
     app: litellm-gateway
   ports:
-    - name: http
+    - name: http-internal
       port: 80
       protocol: TCP
       targetPort: 4000

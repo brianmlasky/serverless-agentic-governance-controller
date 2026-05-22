@@ -71,3 +71,4 @@ jobs:
           echo ""
           echo "=== Recent events ==="
           kubectl get events --namespace=litellm --sort-by='.lastTimestamp' | tail -10
+
