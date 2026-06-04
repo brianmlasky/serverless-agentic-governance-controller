@@ -86,6 +86,44 @@ This scenario occurs when a flawed Terraform deployment or a compromised CI/CD p
     terraform state mv <source> <destination>
     terraform import <resource_type>.<name> <existing_id>
     ```
+    ## Scenario 03: The Agentic Infinite Loop (Fiscal SecOps Circuit Breaker)
+
+### Context & Risk
+This scenario occurs when an autonomous AI agent enters a "reasoning loop" (hallucination loop or infinite retry cycle) and begins consuming inference tokens at an exponential rate. Because the agent's logic is executing properly from a system perspective, standard crash-loop metrics will not catch this. The business risk is rapid budget exhaustion and potential provider-level rate limiting (e.g., hitting global GCP/OpenAI quotas), which causes collateral outages for other production services.
+
+### 1. Symptom (Detection & Alerting)
+* **Monitor:** Watch the `sagc_token_burn_rate_per_minute` and `sagc_budget_depletion_percentage` Prometheus metrics.
+* **Alert:** A P0 "Fiscal Bleed" alert fires if a specific Workload Identity consumes > 15% of its monthly allocated token budget in a 10-minute rolling window.
+
+### 2. Immediate Impact
+* The rogue agent is exhausting financial allocations rapidly.
+* **Secondary Impact:** The cloud provider may impose global HTTP 429 (Too Many Requests) rate limits across the entire organizational account, causing legitimate, non-agentic workloads to fail.
+
+### 3. The "Stop Work" Trigger (Blast Radius Assessment)
+* **Trigger:** If the organizational API quota reaches 80% utilization unexpectedly, or the `sagc_budget_depletion_percentage` metric spikes vertically.
+* **Decision Matrix:** * If the agent is in a non-production namespace: Auto-terminate the pod via OPA policy immediately.
+    * If the agent is in a production namespace handling live customer queries: Trigger the immediate circuit breaker to sever outbound inference traffic while keeping the application pod alive to serve static error pages.
+
+### 4. Forensic Strategy (Triangulation)
+* **Do Not:** Do not immediately restart the pod, as the agent may just resume the loop upon restart.
+* **Action:** Triangulate the exact identity and prompt context causing the loop.
+    ```bash
+    # 1. Identify the highest token consumer in the last 15 minutes
+    kubectl top pods --namespace ai-production
+    
+    # 2. Query the SAGC admission logs to find the specific Workload Identity
+    kubectl logs deployment/governance-controller -n governance-system | grep "budget_check" | awk '{print $8, $12}' | sort | uniq -c | sort -nr | head -n 5
+    ```
+
+### 5. Recovery Plan (The Circuit Breaker)
+* **Immediate Mitigation (The Sever):** Instead of killing the application, use the Governance Controller to dynamically update the budget policy for that specific workload to `$0.00` remaining. This forces the SAGC to Fail-Closed, blocking only the rogue outbound inference calls.
+    ```bash
+    # Apply emergency zero-budget policy to the specific rogue identity
+    kubectl patch budgetpolicy workload-ai-agent-01 -p '{"spec": {"override_budget_cap": "0"}}' --type=merge
+    ```
+* **State Reconciliation:** * Extract the last 50 prompts from the telemetry stack to identify the logic trap causing the hallucination.
+    * Update the agent's system prompt (or temperature settings) in the GitOps repository.
+* **Audit Trail:** The `budgetpolicy` patch is tracked in the Kubernetes audit logs. To restore service, a Pull Request adjusting the agent's logic and resetting the budget state must be approved by the Platform Lead, ensuring the fix is permanent before the circuit breaker is lifted.
 
 ### 5. Compliance & Retrospective (Post-Mortem Guardrails)
 * **Automated Guardrails**: Implement Policy-as-Code (OPA/Sentinel) in the CI pipeline to block expensive instance types or zero-retention periods before the `terraform apply` phase.
