@@ -49,3 +49,45 @@ This scenario occurs when the `governance-controller` incorrectly identifies val
     2. **Exception**: File ticket with risk acceptance.
     3. **Rollback**: Delete non-compliant resource.
 *   **Post-Mortem**: Mandatory review within 48h to document root cause and update test suite.
+
+## Scenario 02: The "Runaway Environment" (Uncontrolled State Mutation)
+
+### Context & Risk
+This scenario occurs when a flawed Terraform deployment or a compromised CI/CD pipeline begins applying destructive or highly expensive infrastructure changes automatically. The immediate business risk is exponential cost overrun (budget burn) or critical infrastructure deletion. 
+
+### 1. Detection & Alerting
+* **Monitor**: Watch the Cloud Provider billing alerts and CI/CD deployment frequency metrics.
+* **Alert**: Trigger a P0 incident if unexpected high-cost resources (e.g., massive GPU instances) are provisioned outside of planned maintenance windows.
+
+### 2. Triage (Blast Radius Assessment)
+* **Action**: Identify if the runaway deployment is currently active.
+* **Decision**: 
+    * If active: Proceed to Immediate Action (Stop the Bleeding).
+    * If already completed: Proceed directly to Investigation & Fix (State Reconciliation).
+
+### 3. Immediate Action (Stop the Bleeding)
+* **CRITICAL WARNING**: Do **not** immediately trigger a code rollback in Git. An automated rollback might compound the state corruption.
+* **Action**: Lock the State Backend to prevent further automated applies.
+    ```bash
+    # Example: Lock the HCP Terraform workspace via CLI
+    terraform workspace lock <workspace-name>
+    ```
+* **Manual Intervention**: Manually scale down expensive instances or sever compromised network routes in the cloud console to stop immediate financial or security bleeding.
+
+### 4. Investigation & Fix (State Reconciliation)
+* **Rollback Intent**: Revert the Git commit to the last known good SHA.
+* **Diff Check**: Run a plan to observe the delta between the broken reality and the reverted code.
+    ```bash
+    terraform plan -out=recovery.tfplan
+    ```
+* **State Surgery**: If the change is too complex for a standard apply, force the state back to a known good configuration without destroying valid resources.
+    ```bash
+    # Move or import state manually
+    terraform state mv <source> <destination>
+    terraform import <resource_type>.<name> <existing_id>
+    ```
+
+### 5. Compliance & Retrospective (Post-Mortem Guardrails)
+* **Automated Guardrails**: Implement Policy-as-Code (OPA/Sentinel) in the CI pipeline to block expensive instance types or zero-retention periods before the `terraform apply` phase.
+* **Manual Guardrails**: For Production workspaces, disable "Auto-Apply." 
+* **Sign-Off**: Require explicit human-in-the-loop approval for any Terraform plans modifying sensitive resources (Databases, IAM, Networking).
