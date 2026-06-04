@@ -33,4 +33,13 @@ Auditability: Budget states are persisted as version-controlled artifacts.
 
 Scalability: Designed for sidecar container deployment within Kubernetes clusters.
 
-Maintained by Brian Mitchell Lasky | Senior SRE
+Repository Organization Standard
+To ensure rapid response during an incident (e.g., a developer looking for answers at 3 AM), this repository is strictly organized into the following knowledge domains:
+
+Incident Response: /docs/playbooks/ (e.g., failure-scenarios.md). Contains actionable, step-by-step recovery procedures.
+
+Engineering Rules: /docs/architecture/ (e.g., standards.md). Contains structural standards, patterns, and framework evaluation criteria.
+
+Decision Frameworks: /docs/adr/ (e.g., README.md). Contains Architecture Decision Records detailing the business and technical rationale behind major platform shifts.
+
+Maintained by Brian Lasky | Senior SRE
