@@ -1,0 +1,2 @@
+Entry 001: The Shift from "Working" to "Hardened"
+Lesson: A senior engineer makes the code work. A Principal Architect makes the code fail safely. When building the SAGC, I realized that I was initially focusing on "Is the policy correct?" rather than "What happens when the policy engine disappears?" Building the 'Fail-Closed' invariant was a mental shift from a feature-driven mindset to a risk-driven mindset. Wisdom for future: Always ask: "If this component vanishes, does the system stay safe?"

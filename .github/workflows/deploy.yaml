@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
 jobs:
   deploy:
-    if: false
+    # TODO: GKE infrastructure currently spun down to zero for cost savings. 
+    # Remove this 'if: false' condition once the cluster is reprovisioned.
+    if: false  
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
