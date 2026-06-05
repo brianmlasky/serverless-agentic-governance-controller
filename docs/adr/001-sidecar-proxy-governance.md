@@ -1,21 +1,27 @@
-# ADR 001: Decoupling Fiscal Governance via Sidecar Proxy Pattern
+# ADR 001: Decoupling Fiscal Governance via Sidecar Proxy
 
 **Date:** 2026-06-05
 **Status:** Accepted
+**Primary Business Driver:** Protect organizational OpEx (budget) from infinite AI reasoning loops without sacrificing developer velocity.
 
 ## Context
-As the organization scales autonomous AI workloads, the risk of "runaway agents" (infinite reasoning loops) causing severe budget exhaustion increases. We need a mechanism to enforce strict fiscal limits (Token Burn Rate) on these agents. 
-
-Initially, the proposal was to integrate a budget-checking library directly into the application code of every AI agent (e.g., importing a Python SDK to check the budget before every LLM call). 
+As we scale autonomous AI workloads, the business requires a hard fiscal circuit breaker. The architectural challenge is enforcing strict "Token Burn Rate" limits without forcing our data science and engineering teams to rewrite their agents or learn complex governance libraries. 
 
 ## Decision
-We will reject the direct-integration approach and instead implement the Serverless Agentic Governance Controller (SAGC) as an out-of-process **Sidecar Proxy** (Admission Control Middleware) deployed within the same Kubernetes Pod as the AI workload. All outbound egress traffic to LLM providers will be forcibly routed through this sidecar via `iptables` interception.
+We will implement the Serverless Agentic Governance Controller (SAGC) as an out-of-process **Sidecar Proxy**. All outbound egress traffic to LLM providers will be forcibly routed through this sidecar via network-layer interception.
 
-## Rationale (The "Why")
-1. **Language Agnostic Portability:** By intercepting traffic at the network layer (L7), the governance controller works universally. We can deploy AI agents written in Python, Rust, or Go without needing to maintain separate budget-checking SDKs for each language.
-2. **Immutability of Governance:** Developers cannot accidentally (or maliciously) bypass the budget checks by modifying their application code or failing to invoke the library. The network-level interception guarantees compliance.
-3. **Forensic Preservation:** In the event of a budget exhaustion (Circuit Breaker trip), the sidecar can sever outbound API traffic while leaving the AI Agent pod in a `Running` state. This preserves local memory and OpenTelemetry trace spans, allowing for a regulatory-grade post-mortem investigation into the hallucination loop.
+## Considered Alternatives
+1.  **Application-Level SDK (Rejected):** Forcing developers to import a budget-checking library. *Why rejected:* High developer friction. Vulnerable to accidental bypass if a developer forgets to invoke the library. Not language-agnostic.
+2.  **Full Service Mesh e.g., Istio/Linkerd (Rejected):** Deploying a global service mesh for L7 traffic management. *Why rejected:* Massive operational tax and complexity. We currently only require outbound API governance, making a full mesh an over-engineered "sledgehammer" that violates our complexity budget.
+3.  **Serverless API Gateway (Rejected):** Routing all agents through a centralized cloud gateway. *Why rejected:* Introduces a single global point of failure and potential latency bottlenecks for internal cluster traffic.
 
-## Consequences
-* **Positive:** Complete decoupling of business logic (the AI Agent) from governance logic (the SAGC). Security and platform teams can update fiscal policies without requiring the AI engineering teams to redeploy their code.
-* **Negative (Trade-off):** Introduces a minor latency penalty (approx. 2-5ms) to every outbound LLM request due to the extra network hop inside the pod. Given the high latency of LLM generation itself, this overhead is deemed an acceptable trade-off for strict fiscal security.
+## Rationale
+* **Immutability of Governance:** Network-level interception guarantees compliance. Agents cannot bypass the budget check, ensuring the business is protected from runaway costs.
+* **Forensic Preservation:** In the event of budget exhaustion, the sidecar drops the outbound network packet (returning HTTP 429) but leaves the AI Agent pod running. This preserves local memory and trace spans for root-cause analysis.
+
+## Consequences (Trade-offs)
+* **Positive:** Complete decoupling of business logic from governance. Security teams can update fiscal policies without AI teams redeploying code.
+* **Negative:** Introduces a minor latency penalty (2-5ms) to every outbound LLM request due to the extra localhost network hop. 
+
+## Future Considerations (Deferred Decisions)
+* As the cluster scales beyond 500+ agentic pods, the resource overhead of running a sidecar in every pod may become inefficient. At that scale, we will defer the decision to evaluate eBPF (Sidecarless) mesh technologies like Cilium to push these network policies directly to the Linux kernel level.
