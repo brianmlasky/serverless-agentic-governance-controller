@@ -1,0 +1,2 @@
+Entry 002: Speaking the Language of Risk & Velocity
+Lesson: The C-suite does not care about "multi-cloud parity" for the sake of parity. They care about business agility. I learned that an Architect’s job isn't to build the most "technically cool" infrastructure; it's to build the infrastructure that is most aligned with the company’s risk profile and competitive strategy. Wisdom for future: Every architectural choice must be justifiable in terms of "How much business velocity are we buying, and what are we trading off to get it?"
