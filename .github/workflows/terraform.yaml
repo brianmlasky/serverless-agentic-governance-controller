@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
-      id-token: 'write' # Required for Workload Identity Federation
-      pull-requests: 'write' # Required to post plan outputs to PRs later
+      id-token: 'write'
+      pull-requests: 'write'
 
     steps:
       - name: Checkout Repository
@@ -34,18 +34,32 @@ jobs:
         with:
           terraform_version: "1.8.0"
 
-      - name: Terraform Init
-        run: terraform init
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
 
       - name: Terraform Format
         run: terraform fmt -check
+
+      # --- POLICY AS CODE GATES ---
+      - name: Run TFLint
+        run: tflint -f compact
+
+      - name: Run tfsec static analysis
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: false
+
+      # --- INFRASTRUCTURE EXECUTION ---
+      - name: Terraform Init
+        run: terraform init
 
       - name: Terraform Plan
         id: plan
         if: github.event_name == 'pull_request'
         run: terraform plan -no-color
 
-      # The Apply step ONLY runs if the code is merged into the main branch
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve
