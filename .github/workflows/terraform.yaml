@@ -42,7 +42,7 @@ jobs:
       - name: Terraform Format
         run: terraform fmt -check
 
-      # --- POLICY AS CODE GATES ---
+# --- POLICY AS CODE GATES ---
       - name: Run TFLint
         run: tflint -f compact
 
@@ -50,6 +50,7 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           soft_fail: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # --- INFRASTRUCTURE EXECUTION ---
       - name: Terraform Init
