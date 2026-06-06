@@ -24,3 +24,4 @@ resource "google_compute_subnetwork" "gke_subnet" {
   }
 }
 # Trigger CI/CD execution
+# Retry CI/CD initialization
