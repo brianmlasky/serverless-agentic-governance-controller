@@ -2,11 +2,11 @@ name: Deploy to GKE
 
 on:
   workflow_dispatch:
+
 jobs:
   deploy:
-    # TODO: GKE infrastructure currently spun down to zero for cost savings. 
-    # Remove this 'if: false' condition once the cluster is reprovisioned.
-    if: false  
+    # GKE infrastructure is spun down for cost savings.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
