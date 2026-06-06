@@ -6,7 +6,7 @@ on:
 jobs:
   deploy:
     # GKE infrastructure is spun down for cost savings.
-    if: ${{ false }}
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
