@@ -23,3 +23,4 @@ resource "google_compute_subnetwork" "gke_subnet" {
     ip_cidr_range = "10.2.0.0/20"
   }
 }
+# Trigger CI/CD execution
