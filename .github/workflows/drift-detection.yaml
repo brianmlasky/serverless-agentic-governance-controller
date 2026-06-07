@@ -1,0 +1,36 @@
+name: "Infrastructure Drift Detection"
+
+on:
+  schedule:
+    # Run at 12:00 UTC every day
+    - cron: '0 12 * * *'
+  workflow_dispatch: # Allows you to run it manually from the GitHub UI
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  drift-detection:
+    name: "Detect State Drift"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan (Drift Check)
+        # The -detailed-exitcode flag returns a 2 if there is a diff, causing the GitHub Action to fail and alert you.
+        run: terraform plan -detailed-exitcode
