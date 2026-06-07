@@ -23,7 +23,7 @@ resource "google_container_cluster" "main" {
   # Private cluster - nodes have no public IPs
   private_cluster_config {
     enable_private_nodes    = true
-    enable_private_endpoint = false  # Public endpoint for kubectl access
+    enable_private_endpoint = false # Public endpoint for kubectl access
   }
 
   # Release channel for automatic upgrades
