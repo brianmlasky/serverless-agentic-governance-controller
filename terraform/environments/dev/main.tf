@@ -70,6 +70,7 @@ module "gke_autopilot" {
   project_id          = var.project_id
   region              = var.region
   environment         = var.environment
+  cluster_name        = "sagc-cluster" # <-- ADD THIS LINE
   network_name        = module.networking.network_name
   subnetwork_name     = module.networking.subnetwork_name
   pods_range_name     = module.networking.pods_range_name
