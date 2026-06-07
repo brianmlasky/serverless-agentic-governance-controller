@@ -1,8 +1,8 @@
 resource "google_container_cluster" "primary" {
-  count    = var.enable_infra ? 1 : 0
-  name     = "dev-gke-cluster"
-  location = "us-central1"
-  initial_node_count = 1
+  count                    = var.enable_infra ? 1 : 0
+  name                     = "dev-gke-cluster"
+  location                 = "us-central1"
+  initial_node_count       = 1
   remove_default_node_pool = true
 }
 

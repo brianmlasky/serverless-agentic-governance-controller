@@ -66,14 +66,14 @@ module "artifact_registry" {
 
 # ── GKE Autopilot ─────────────────────────────────────────────────────────
 module "gke_autopilot" {
-  source               = "../../modules/gke-autopilot"
-  project_id           = var.project_id
-  region               = var.region
-  environment          = var.environment
-  network_name         = module.networking.network_name
-  subnetwork_name      = module.networking.subnetwork_name
-  pods_range_name      = module.networking.pods_range_name
-  services_range_name  = module.networking.services_range_name
+  source              = "../../modules/gke-autopilot"
+  project_id          = var.project_id
+  region              = var.region
+  environment         = var.environment
+  network_name        = module.networking.network_name
+  subnetwork_name     = module.networking.subnetwork_name
+  pods_range_name     = module.networking.pods_range_name
+  services_range_name = module.networking.services_range_name
 
   depends_on = [module.networking]
 }

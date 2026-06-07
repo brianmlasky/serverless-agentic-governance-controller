@@ -1,7 +1,7 @@
 # ── Local derived values ────────────────────────────────────────────────────
 locals {
-  oidc_url = "container.googleapis.com/v1/projects/${var.gke_cluster_project}/locations/${var.gke_cluster_location}/clusters/${var.gke_cluster_name}"
-  oidc_arn = "arn:aws:iam::${var.aws_account_id}:oidc-provider/${local.oidc_url}"
+  oidc_url    = "container.googleapis.com/v1/projects/${var.gke_cluster_project}/locations/${var.gke_cluster_location}/clusters/${var.gke_cluster_name}"
+  oidc_arn    = "arn:aws:iam::${var.aws_account_id}:oidc-provider/${local.oidc_url}"
   role_name   = "${var.environment}-litellm-bedrock-role"
   policy_name = "${var.environment}-litellm-bedrock-policy"
 }
