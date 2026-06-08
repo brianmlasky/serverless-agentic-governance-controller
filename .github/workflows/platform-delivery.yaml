@@ -31,6 +31,5 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-        env:
-          # This tells Trivy CLI to use your local VEX file with an absolute path
-          TRIVY_VEX: ${{ github.workspace }}/trivy-vex.json
+          # Use the standard vex-path parameter
+          vex-path: 'trivy-vex.json'
