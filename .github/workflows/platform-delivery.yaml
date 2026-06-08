@@ -31,4 +31,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          vex: 'trivy-vex.json'
+        env:
+          # This tells Trivy CLI to use your local VEX file
+          TRIVY_VEX: 'trivy-vex.json'
