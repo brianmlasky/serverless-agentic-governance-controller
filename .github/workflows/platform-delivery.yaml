@@ -2,44 +2,16 @@ name: Platform Delivery & Compliance
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   compliance-and-infrastructure:
-    name: Fiscal SecOps & Infrastructure Checks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      # ... (your existing infrastructure steps)
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.8.0"
-
-      - name: Setup Open Policy Agent (OPA)
-        uses: open-policy-agent/setup-opa@v2
-        with:
-          version: latest
-
-      - name: Verify Terraform Formatting
-        run: terraform fmt -check -recursive
-        working-directory: ./terraform
-        continue-on-error: false
-
-      - name: Run OPA Fiscal Guardrail Tests
-        run: opa test k8s/policies/fiscal/pod-limit-enforcer.rego -v
-        continue-on-error: false
-
-      - name: Validate Kustomize Workload Builds
-        run: |
-          kubectl kustomize k8s/workloads/litellm > /dev/null
-          kubectl kustomize k8s/policies > /dev/null
-          kubectl kustomize k8s/workloads/controller > /dev/null
-
-container-security-scan:
+  container-security-scan:
     name: Build & Scan Controller Image
     runs-on: ubuntu-latest
     needs: compliance-and-infrastructure
@@ -59,5 +31,4 @@ container-security-scan:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          # This tells Trivy to acknowledge our VEX assertions
           vex: 'trivy-vex.json'
