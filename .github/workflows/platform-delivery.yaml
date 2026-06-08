@@ -31,5 +31,5 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          # Use the standard vex-path parameter
-          vex-path: 'trivy-vex.json'
+        env:
+          TRIVY_VEX: ${{ github.workspace }}/trivy-vex.json
