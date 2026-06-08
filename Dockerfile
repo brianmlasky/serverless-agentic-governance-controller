@@ -9,8 +9,10 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /build
 
-# Install build dependencies (these will NOT be in the final image)
-RUN apt-get update && apt-get install -y --no-install-recommends gcc && \
+# Install build dependencies (Non-interactive to prevent CI hangs)
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends gcc && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy only requirements first to cache the pip install step
@@ -31,7 +33,7 @@ RUN addgroup --system --gid 10001 sagcgroup && \
 
 WORKDIR /app
 
-# --- FIX: Copy requirements.txt into the runtime stage ---
+# Copy requirements.txt into the runtime stage for installation
 COPY requirements.txt .
 
 # Copy the pre-compiled wheels from the builder stage
