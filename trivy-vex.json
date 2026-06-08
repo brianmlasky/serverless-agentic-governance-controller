@@ -1,0 +1,22 @@
+{
+  "doc": {
+    "organization": "sagc-governance",
+    "id": "sagc-vulnerabilities-2026",
+    "title": "VEX for SAGC Controller",
+    "version": "1"
+  },
+  "statements": [
+    {
+      "vulnerability": "CVE-2026-24049",
+      "status": "not_affected",
+      "status_notes": "The vulnerable wheel code inside setuptools is not reachable in this application runtime.",
+      "component": "wheel"
+    },
+    {
+      "vulnerability": "CVE-2026-23949",
+      "status": "not_affected",
+      "status_notes": "The vulnerable jaraco.context code inside setuptools is not reachable in this application runtime.",
+      "component": "jaraco.context"
+    }
+  ]
+}
