@@ -25,16 +25,19 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Create a dedicated, non-root user and group
+# Create a dedicated, non-root user
 RUN addgroup --system --gid 10001 sagcgroup && \
     adduser --system --uid 10001 --gid 10001 --no-create-home sagcuser
 
 WORKDIR /app
 
+# --- FIX: Copy requirements.txt into the runtime stage ---
+COPY requirements.txt .
+
 # Copy the pre-compiled wheels from the builder stage
 COPY --from=builder /build/wheels /wheels
-# Use --upgrade to ensure the sub-dependencies are forced to the versions we just froze
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+RUN pip install --no-cache-dir /wheels/* && \
+    rm -rf /wheels
 
 # Copy the application source code
 COPY ./src /app/src
