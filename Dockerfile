@@ -33,8 +33,8 @@ WORKDIR /app
 
 # Copy the pre-compiled wheels from the builder stage
 COPY --from=builder /build/wheels /wheels
-RUN pip install --no-cache /wheels/* && \
-    rm -rf /wheels
+# Use --upgrade to ensure the sub-dependencies are forced to the versions we just froze
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy the application source code
 COPY ./src /app/src
