@@ -1,13 +1,13 @@
-# Use a specific FastAPI version; let pip resolve the internal starlette dependency
-fastapi==0.111.0
-uvicorn==0.30.1
+# Modern versions that resolve the CVEs
+fastapi>=0.115.0
+starlette>=0.40.0
+uvicorn>=0.32.0
 
-# Networking & Telemetry (Unpinned or wide-range for resolver)
-httpx>=0.27.0
-prometheus-client>=0.20.0
-pydantic>=2.7.0
+# Networking & Telemetry
+httpx>=0.27.2
+prometheus-client>=0.21.0
+pydantic>=2.9.2
 
-# Security Overrides: These are the specific packages Trivy flagged.
-# Forcing these will force the resolver to find a compatible graph.
+# Critical Security Patches
 wheel>=0.46.2
-jaraco.context>=6.1.0
+jaraco.context>=6.1.2
