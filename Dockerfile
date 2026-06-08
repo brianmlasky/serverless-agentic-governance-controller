@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build & Resolve Dependencies
 # ==========================================
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Prevent Python from writing .pyc files and force stdout logging
 ENV PYTHONDONTWRITEBYTECODE=1
