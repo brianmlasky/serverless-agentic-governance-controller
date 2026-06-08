@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-fiscal-violation-pod
+  namespace: agentic
+spec:
+  containers:
+    - name: hungry-container
+      image: nginx:latest
+      # Deliberately missing the 'resources' block to trigger the fiscal limit violation

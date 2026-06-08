@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: agentic
+data:
+  config.yaml: |
+    model_list:
+      - model_name: "claude-sonnet"
+        litellm_params:
+          # Uses the modern 2026 Bedrock Cross-Region Inference Profile
+          model: "bedrock/global.anthropic.claude-sonnet-4-6"
+    litellm_settings:
+      drop_params: true

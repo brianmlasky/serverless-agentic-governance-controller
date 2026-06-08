@@ -1,0 +1,14 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sFiscalLimits
+metadata:
+  name: fiscal-limit-enforcer
+spec:
+  # This matches the 'ConstraintTemplate' we created
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    # We apply this to the 'agentic' namespace where our 
+    # serverless-agentic-governance-controller pods will live.
+    namespaces:
+      - "agentic"
