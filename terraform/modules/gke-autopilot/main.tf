@@ -8,6 +8,9 @@ resource "google_container_cluster" "main" {
   project     = var.project_id
   description = "Autopilot cluster. Google manages nodes. We own workload identity and network policy."
 
+  # Explicitly override the invisible default lock
+  deletion_protection = false
+
   # Autopilot mode - Google manages nodes
   enable_autopilot = true
 
