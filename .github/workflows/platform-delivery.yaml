@@ -31,5 +31,3 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-        env:
-          TRIVY_VEX: ${{ github.workspace }}/trivy-vex.json
