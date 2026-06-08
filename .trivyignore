@@ -1,0 +1,3 @@
+# False positives embedded in Python setuptools internal dependencies
+CVE-2026-24049
+CVE-2026-23949
