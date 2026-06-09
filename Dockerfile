@@ -1,57 +1,23 @@
-# ==========================================
-# Stage 1: Build & Resolve Dependencies
-# ==========================================
-FROM python:3.11-slim AS builder
+# Stage 1: Build Environment
+FROM python:3.11-slim as builder
+WORKDIR /app
+COPY src/requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
 
-# Prevent Python from writing .pyc files and force stdout logging
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-WORKDIR /build
-
-# Install build dependencies (Non-interactive to prevent CI hangs)
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends gcc && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy only requirements first to cache the pip install step
-COPY requirements.txt .
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /build/wheels -r requirements.txt
-
-# ==========================================
-# Stage 2: Production Runtime
-# ==========================================
+# Stage 2: Minimal Runtime Environment
 FROM python:3.11-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-# Create a dedicated, non-root user
-RUN addgroup --system --gid 10001 sagcgroup && \
-    adduser --system --uid 10001 --gid 10001 --no-create-home sagcuser
-
 WORKDIR /app
 
-# Copy requirements.txt into the runtime stage for installation
-COPY requirements.txt .
+# Fiscal SecOps Guardrail: Run as a non-root user to enforce container security boundaries
+RUN useradd -m -s /bin/bash sagc_user
+USER sagc_user
 
-# Copy the pre-compiled wheels from the builder stage
-COPY --from=builder /build/wheels /wheels
-RUN pip install --no-cache-dir /wheels/* && \
-    rm -rf /wheels
+# Copy dependencies from the builder stage
+COPY --from=builder /root/.local /home/sagc_user/.local
+ENV PATH=/home/sagc_user/.local/bin:$PATH
 
-# Copy the application source code
-COPY ./src /app/src
+# Copy the application payload
+COPY src/ /app/src/
 
-# Enforce strict ownership to our non-root user
-RUN chown -R sagcuser:sagcgroup /app
-
-# Drop privileges: execute the container as the non-root user
-USER sagcuser
-
-# Expose the application port
-EXPOSE 8000
-
-# Execute the FastAPI server via Uvicorn
-CMD ["uvicorn", "src.controller.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+# Execute the controller
+CMD ["python", "src/main.py"]
