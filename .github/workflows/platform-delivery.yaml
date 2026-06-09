@@ -49,6 +49,18 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      # Explicit diagnostic validation to prove keyless access is live
-      - name: Check GCP Authentication Status
-        run: gcloud auth list
+      # Authenticate Docker to the Artifact Registry region
+      - name: Configure Docker for GCP Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      # Tag the image using the unique GitHub commit SHA for strict traceability
+      - name: Tag Container Image
+        run: |
+          docker tag sagc-controller:ci-test us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:${{ github.sha }}
+          docker tag sagc-controller:ci-test us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:latest
+
+      # Push the image to the governed supply chain boundary
+      - name: Push to Artifact Registry
+        run: |
+          docker push us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:${{ github.sha }}
+          docker push us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:latest
