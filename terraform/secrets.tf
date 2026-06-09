@@ -14,7 +14,7 @@ resource "google_secret_manager_secret" "llm_api_key" {
 
   # Enforce automatic replication across Google managed regions
   replication {
-    automatic = true
+    auto {}  
   }
 }
 
@@ -24,7 +24,10 @@ resource "google_secret_manager_secret_iam_member" "litellm_accessor" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.llm_api_key.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:litellm-wif-sa@alert-hall-466720-c0.iam.gserviceaccount.com"
+  
+  # This implicit reference resolves the race condition by forcing Terraform to 
+  # wait until the service account API fully propagates the identity.
+  member    = "serviceAccount:${google_service_account.litellm_wif.email}"
 
   depends_on = [
     google_secret_manager_secret.llm_api_key
