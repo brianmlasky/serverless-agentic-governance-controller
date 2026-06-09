@@ -15,6 +15,12 @@ jobs:
     name: Build & Scan Controller Image
     runs-on: ubuntu-latest
     needs: compliance-and-infrastructure
+    
+    # Critical: Grant explicit permissions required for the OIDC id-token exchange
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,3 +37,18 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+
+      - name: Authenticate to Google Cloud via WIF
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: 'alert-hall-466720-c0'
+          workload_identity_provider: 'projects/390958881559/locations/global/workloadIdentityPools/sagc-pool/providers/github-actions'
+          service_account: 'sagc-controller@alert-hall-466720-c0.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Explicit diagnostic validation to prove keyless access is live
+      - name: Check GCP Authentication Status
+        run: gcloud auth list
