@@ -4,6 +4,10 @@ on:
   push:
     branches: [ main ]
 
+# Proactive governance: Opt into Node 24 ahead of the June 16 deprecation deadline
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   compliance-and-infrastructure:
     runs-on: ubuntu-latest
