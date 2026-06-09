@@ -1,0 +1,14 @@
+# ==========================================================================
+# Serverless Agentic Governance Controller: Ownership Boundaries
+# ==========================================================================
+# This file enforces mandatory pull request reviews for critical platform
+# infrastructure, compliance pipelines, and architectural memory.
+
+# 1. The Delivery & Compliance Pipeline
+/.github/workflows/         @brianmlasky
+
+# 2. Infrastructure as Code (State & Blueprints)
+/terraform/                 @brianmlasky
+
+# 3. Architectural Memory (Immutable Ledger)
+/docs/architecture/         @brianmlasky
