@@ -5,7 +5,7 @@
 variable "project_id" { type = string }
 variable "k8s_service_account" { type = string }
 variable "github_repo" { type = string }
-variable "aws_role_arn" { type = string } 
+variable "aws_role_arn" { type = string }
 
 resource "google_iam_workload_identity_pool" "sagc_pool" {
   workload_identity_pool_id = "sagc-pool"
@@ -13,10 +13,10 @@ resource "google_iam_workload_identity_pool" "sagc_pool" {
 }
 
 resource "google_iam_workload_identity_pool_provider" "gke_provider" {
-  project                            = var.project_id  # Explicit project binding added
+  project                            = var.project_id # Explicit project binding added
   workload_identity_pool_id          = google_iam_workload_identity_pool.sagc_pool.workload_identity_pool_id
   workload_identity_pool_provider_id = "gke-provider"
-  
+
   attribute_mapping = {
     "google.subject" = "assertion.sub"
   }
@@ -27,10 +27,10 @@ resource "google_iam_workload_identity_pool_provider" "gke_provider" {
 }
 
 resource "google_iam_workload_identity_pool_provider" "github_provider" {
-  project                            = var.project_id  # Explicit project binding added
+  project                            = var.project_id # Explicit project binding added
   workload_identity_pool_id          = google_iam_workload_identity_pool.sagc_pool.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-actions"
-  
+
   attribute_mapping = {
     "google.subject"       = "assertion.sub"
     "attribute.actor"      = "assertion.actor"
