@@ -1,3 +1,9 @@
+---
+owner: "@brianmlasky"
+expires_on: "2026-12-09"
+classification: "operational-reference"
+---
+
 # Operational Infrastructure Blueprint
 
 This directory manages the core infrastructure layer for the Serverless Agentic Governance Controller.
