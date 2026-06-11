@@ -19,11 +19,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
         with:
-          workload_identity_provider: ${{ secrets.projects/390958881559/locations/global/workloadIdentityPools/sagc-pool }}
-          service_account: ${{ secrets.sagc-terraform-sa@alert-hall-466720-c0.iam.gserviceaccount.com }}
+          workload_identity_provider: 'projects/390958881559/locations/global/workloadIdentityPools/sagc-pool/providers/github'
+          service_account: 'sagc-terraform-sa@alert-hall-466720-c0.iam.gserviceaccount.com'
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
