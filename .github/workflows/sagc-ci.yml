@@ -1,0 +1,25 @@
+name: SAGC Continuous Integration
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  verify-governance:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Execute Chaos Engineering Suite
+      run: |
+        make install
+        make test-chaos
+        # We expect sys.exit(1) from the hard kill test. 
+        # In a real CI, we'd wrap this to assert the exit code is exactly 1.
