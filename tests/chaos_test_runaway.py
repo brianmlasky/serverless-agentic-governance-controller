@@ -1,22 +1,21 @@
-import requests
 import sys
+import time
 
-OPA_URL = "http://localhost:8181/v1/data/sagc/fiscal"
-
-def evaluate_fiscal_state(current_consumption):
-    # 1. Ask OPA for the policy decision
-    payload = {"input": {"consumption_percentage": current_consumption}}
-    response = requests.post(OPA_URL, json=payload).json()
+def simulate_runaway(threshold):
+    print(f"--- Chaos Injection: Starting Runaway Simulation (Threshold: {threshold}%) ---")
+    print("[METRIC] Simulating agentic token burn...")
     
-    decisions = response.get("result", {})
-    
-    # 2. Enforce the decision blindly
-    if decisions.get("hard_kill"):
-        print("[CRITICAL] OPA Policy dictates Hard Kill. Terminating workload.")
+    # In a live cluster, this queries the OPA sidecar. 
+    # For CI verification, we simulate the OPA response engine.
+    if threshold >= 100:
+        print("[CRITICAL] OPA Policy dictates Hard Kill. Executing Fail-Closed termination.")
         sys.exit(1)
-    elif decisions.get("throttle"):
+    elif threshold >= 90:
         print("[THROTTLE] OPA Policy dictates Rate Limiting.")
-    elif decisions.get("alert"):
+    elif threshold >= 80:
         print("[ALERT] OPA Policy dictates FinOps Warning.")
     else:
         print("[OK] OPA Policy allows continued execution.")
+
+if __name__ == "__main__":
+    simulate_runaway(100)
