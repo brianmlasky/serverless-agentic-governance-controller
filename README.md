@@ -18,8 +18,6 @@ I architected the SAGC to move governance from "documentation" to "mathematical 
 ## Architecture Overview
 The SAGC functions as an **Admission Control Middleware**, intercepting inference requests to validate fiscal authorization in real-time. 
 
-
-
 ## Core Capabilities
 * **Fail-Closed Security**: Defaults to blocking traffic if policy validation fails or the budget store is inaccessible.
 * **Fiscal Observability**: Built-in Prometheus instrumentation provides real-time "Token Burn Rate" telemetry.
@@ -51,4 +49,27 @@ Engineering Rules: /docs/architecture/ (e.g., standards.md). Contains structural
 
 Decision Frameworks: /docs/adr/ (e.g., README.md). Contains Architecture Decision Records detailing the business and technical rationale behind major platform shifts.
 
-Maintained by Brian Lasky | Senior SRE
+🚀 Clean Room Deployment & Verification
+This repository is designed for a zero-friction handoff.
+
+Prerequisites
+A Google Cloud Project with Workload Identity Federation (WIF) configured.
+
+A Kubernetes cluster (GKE) with the Prometheus Operator installed.
+
+Local dependencies: kubectl, terraform, python3.10+, and make.
+
+Bootstrap Command
+To deploy the OPA sidecar, the SAGC controller, and the observability stack:
+
+Bash
+kubectl apply -k k8s/
+kubectl apply -f monitoring/sagc-service-monitor.yaml
+Verification Command
+Run the chaos engineering suite to simulate a token runaway event and verify the fail-closed architecture:
+
+Bash
+make test-chaos
+Expected Result: The script will trigger alerts, inject throttling, and ultimately execute a sys.exit(1) hard kill when the budget hits 100%.
+
+Maintained by Brian Lasky | Senior Site Reliability Engineer & Cloud Architect
