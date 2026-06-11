@@ -1,19 +1,22 @@
-import time
+import requests
 import sys
 
-def simulate_runaway(threshold):
-    print(f"--- Chaos Injection: Starting Runaway Simulation (Threshold: {threshold}%) ---")
-    print("[METRIC] Simulating agentic token burn...")
+OPA_URL = "http://localhost:8181/v1/data/sagc/fiscal"
+
+def evaluate_fiscal_state(current_consumption):
+    # 1. Ask OPA for the policy decision
+    payload = {"input": {"consumption_percentage": current_consumption}}
+    response = requests.post(OPA_URL, json=payload).json()
     
-    if threshold >= 80:
-        print("[ALERT] 80% Threshold Reached. Dispatching asynchronous webhook warning.")
-    if threshold >= 90:
-        print("[THROTTLE] 90% Threshold Reached. Injecting artificial latency into LLM requests.")
-        time.sleep(1)
-    if threshold >= 100:
-        print("[CRITICAL] 100% Budget Exhausted. Executing Fail-Closed Hard Kill.")
+    decisions = response.get("result", {})
+    
+    # 2. Enforce the decision blindly
+    if decisions.get("hard_kill"):
+        print("[CRITICAL] OPA Policy dictates Hard Kill. Terminating workload.")
         sys.exit(1)
-        
-if __name__ == "__main__":
-    # In a real CI environment, this parameter would be dynamic
-    simulate_runaway(100)
+    elif decisions.get("throttle"):
+        print("[THROTTLE] OPA Policy dictates Rate Limiting.")
+    elif decisions.get("alert"):
+        print("[ALERT] OPA Policy dictates FinOps Warning.")
+    else:
+        print("[OK] OPA Policy allows continued execution.")
