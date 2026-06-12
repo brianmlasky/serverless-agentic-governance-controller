@@ -73,3 +73,7 @@ make test-chaos
 Expected Result: The script will trigger alerts, inject throttling, and ultimately execute a sys.exit(1) hard kill when the budget hits 100%.
 
 Maintained by Brian Lasky | Senior Site Reliability Engineer & Cloud Architect
+## Architectural Defense & Stakeholder Alignment
+A production-grade system must be defended against both technical failure and business risk. I have compiled an exhaustive Pre-Mortem and Stakeholder Q&A matrix that addresses the strategic, financial, and operational implications of the Serverless Agentic Governance Controller.
+
+* 📖 **[Read the Full Stakeholder Q&A Matrix](docs/interview/stakeholder-qa.md)**
