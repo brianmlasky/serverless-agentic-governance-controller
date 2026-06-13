@@ -407,3 +407,58 @@ To maximize the efficiency of our upcoming architectural review, I have prepared
 **Q40. [The Engineering KPI] "Twelve months from now, assuming the SAGC runs flawlessly, what single engineering KPI will prove my architecture was a success? Reduced MTTR, or developer onboarding speed?"**
 * **Why Ask:** Forces the CTO to articulate their true primary pain point.
 * **The Goal:** Aligns your architectural priorities with their core technical metric, ensuring your definition of "done" matches the executive suite's.
+
+### Chief Information Security Officer (CISO)
+**Core Interest:** Zero-Trust Posture, Data Exfiltration, Vulnerability Management, Prompt Injection
+
+#### Phase 1: The Baseline Defense (Zero-Trust & Security Posture)
+
+**Q1. [Zero-Trust Perimeter] How does your architecture prevent a rogue AI agent from establishing a reverse shell to the internet?**
+* **Answer:** We enforce strict Kubernetes Network Policies. Agent pods have zero direct internet access. They only communicate internally with the SAGC proxy, which explicitly whitelists outbound destinations.
+* **Anticipated Follow-Up:** *Can an agent modify the proxy's whitelist if compromised?*
+* **Rebuttal:** No. The whitelist is immutable at runtime via read-only ConfigMaps. The agent lacks RBAC permissions to mutate cluster state.
+
+**Q2. [Prompt Injection] If an attacker "jailbreaks" our chatbot, how do you stop it from executing malicious commands?**
+* **Answer:** The SAGC acts as a bidirectional schema validator. The LLM response payload must strictly match the pre-approved OpenAPI schema for that endpoint.
+* **Anticipated Follow-Up:** *What if the payload matches the schema, but contains malicious SQL?*
+* **Rebuttal:** We integrate DLP and WAF regex rules into the egress pipeline, dropping payloads with SQL execution patterns or executable bash code.
+
+**Q3. [Secrets Management] How are we securing OpenAI/Anthropic API keys across 50 different teams?**
+* **Answer:** Developers never touch vendor keys. Applications send unauthenticated requests to the SAGC. The SAGC dynamically fetches keys from Vault and injects them at the egress perimeter.
+* **Anticipated Follow-Up:** *If the SAGC pod is compromised, does the attacker get the master keys?*
+* **Rebuttal:** Keys exist only in ephemeral memory. Furthermore, we map specific vendor keys to specific internal namespaces, strictly containing the blast radius of a leak.
+
+**Q4. [Denial of Wallet (DoW)] How do you mitigate a targeted attack meant to spam our AI endpoints and bankrupt our token budget?**
+* **Answer:** We enforce strict IP-based rate limiting and CAPTCHA integrations at the edge proxy, dropping unauthenticated spam before it hits the AI evaluation layer.
+* **Anticipated Follow-Up:** *What if the attack is from authenticated, distributed botnets?*
+* **Rebuttal:** The FinOps dynamic thresholds act as the ultimate backstop. The namespace budget hits its hard cap rapidly, severing the connection and mathematically capping financial damage.
+
+**Q5. [Data Exfiltration] How do you prevent an LLM from sending summarized PII to an external attacker-controlled URL?**
+* **Answer:** The proxy enforces strict egress destination filtering. If the LLM attempts an outbound call to an unauthorized domain, the network policy drops the packet.
+* **Anticipated Follow-Up:** *What if they encode data and exfiltrate via DNS lookups?*
+* **Rebuttal:** Our VPC uses private DNS zones and restricts outbound port 53 exclusively to internal resolvers, blocking anomalous external DNS queries entirely.
+
+**Q6. [Data in Transit] Since your controller inspects the payload, are you breaking TLS and exposing plain text in the cluster?**
+* **Answer:** We terminate TLS at the gateway for inspection, but internal transit is heavily encrypted using mutual TLS (mTLS) provided by our service mesh.
+* **Anticipated Follow-Up:** *Doesn't terminating TLS violate end-to-end encryption mandates?*
+* **Rebuttal:** It is an authorized "TLS Bump" architecture. Because termination happens entirely within our secure VPC memory space before re-encryption, it satisfies SOC2 requirements.
+
+**Q7. [Insider Threat & PII] Can a rogue SRE query the SAGC logs to read sensitive user prompts?**
+* **Answer:** No. We hash payload signatures for audit verification but strip PII (SSNs, credit cards) from the plain text before logs are written to the SIEM.
+* **Anticipated Follow-Up:** *How accurate is the redaction? Regex misses things.*
+* **Rebuttal:** We pair regex with local Named Entity Recognition (NER) models inside the sidecar to mask contextual PII before the log leaves the pod.
+
+**Q8. [Vulnerability Management] What happens when a critical CVE is announced for the OPA engine on a Friday evening?**
+* **Answer:** Our CI/CD pipeline utilizes continuous image scanning. We patch the base image in the Dockerfile, merge to main, and the immutable rollout replaces pods with zero downtime.
+* **Anticipated Follow-Up:** *Do we have to wait for open-source maintainers to patch it?*
+* **Rebuttal:** If a patch isn't available, our runtime security policies (Falco) dynamically restrict the specific vulnerable system calls associated with the CVE.
+
+**Q9. [API Key Rotation] Does rotating the master OpenAI keys require us to restart all AI applications and cause downtime?**
+* **Answer:** Zero downtime. Applications don't hold keys. The SAGC dynamically watches the Vault path and hot-reloads new keys into memory instantly.
+* **Anticipated Follow-Up:** *What happens to in-flight requests during rotation?*
+* **Rebuttal:** The SAGC gracefully drains active connections using the old key while routing new requests with the new key, ensuring zero dropped packets.
+
+**Q10. [Least Privilege] If an attacker achieves remote code execution on the SAGC pod, what is their blast radius?**
+* **Answer:** The blast radius is severely contained. Containers run as non-root, with read-only file systems, and Linux capabilities dropped via strict Pod Security Admission.
+* **Anticipated Follow-Up:** *Can they use the service account to take over the cluster?*
+* **Rebuttal:** No. The SAGC service account is bound by strict RBAC, lacking permissions to read outside secrets or execute commands on other containers.
