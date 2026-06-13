@@ -51,3 +51,18 @@
 
 **Q5: How do you deploy this across 50 different engineering squads without breaking their systems?**
 **A:** We use a 'Shadow Mode' deployment. Phase one strictly observes, hashes, and logs data without blocking requests. We use this telemetry to establish a mathematical baseline of token consumption for each squad. We only switch from 'audit' to 'enforce' after validating operational norms, avoiding false positives.
+
+**Q6: How does your architecture prevent a hijacked agent from exfiltrating data via prompt injection?**
+**A:** The SAGC operates on zero-trust principles. Agents route through our proxy, which enforces strict payload inspection and validates against an allowed schema registry. Malformed or anomalous requests are dropped before leaving the VPC, containing the blast radius.
+
+**Q7: How do you guarantee the governance policies in our AWS failover don't drift from our GCP primary?**
+**A:** We eliminate drift via strict GitOps. The entire SAGC architecture is deployed using Terraform. Policy updates merged to main are deployed to both GCP and AWS simultaneously. Our state reconciliation loop overwrites any manual console changes.
+
+**Q8: How do we prevent this controller from becoming a bottleneck that developers hate?**
+**A:** We 'shift left' by providing developers a lightweight, containerized version of the SAGC for their local environments. They test workflows against the exact OPA policies used in production, catching violations before opening a pull request.
+
+**Q9: What if an agent spawns hundreds of sub-agents and DDoSes our internal APIs?**
+**A:** The controller tracks execution context via correlation IDs and enforces 'recursion depth boundaries.' If a parent agent spawns child agents exceeding concurrency limits, the SAGC hard-kills the entire transaction tree.
+
+**Q10: Why build the SAGC instead of buying an off-the-shelf LLM firewall?**
+**A:** Off-the-shelf tools are black boxes that don't understand our custom business logic or Multi-Cloud DR requirements. Building it on open-source standards (K8s, OPA) natively integrates with our Terraform pipelines, ensuring we own our financial security without vendor lock-in.
