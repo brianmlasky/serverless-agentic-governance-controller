@@ -261,3 +261,55 @@ To maximize the efficiency of our upcoming architectural review, I have prepared
 * **Answer:** The sidecar is incredibly lightweight, typically consuming less than 50MB of RAM and minimal CPU to evaluate compiled, in-memory policies.
 * **Anticipated Follow-Up:** *If we have thousands of pods, doesn't 50MB per pod add up to massive bloat?*
 * **Rebuttal:** For highly dense clusters, we transition from a sidecar pattern to a DaemonSet pattern, running one centralized evaluator per Node to further reduce footprint.
+
+#### Phase 2: Systemic Integration & Scaling (Operations & Friction)
+
+**Q11. [Configuration Drift] In my experience, disaster recovery environments always drift from the primary. How do you mathematically guarantee that the governance policies in our AWS failover exactly match our GCP primary six months from now?**
+* **Answer:** We eliminate drift by removing human access to the control plane. The entire SAGC architecture is deployed via strict GitOps using Terraform.
+* **Anticipated Follow-Up:** *What if a panicked SRE manually changes a setting in the GCP console during an incident?*
+* **Rebuttal:** Our state reconciliation loop immediately overwrites unauthorized console changes within minutes. The Git commit SHA remains the absolute single source of truth.
+
+**Q12. [Developer Pushback] My senior developers are going to hate having their requests blocked by your controller in production. How do we prevent this from becoming a massive bottleneck?**
+* **Answer:** We 'shift left' by providing developers with a lightweight, containerized version of the SAGC that runs locally in their development environments.
+* **Anticipated Follow-Up:** *Will running local Kubernetes clusters bog down their laptops and slow down build times?*
+* **Rebuttal:** No. The local sandbox is just a lightweight binary of the OPA engine and the API proxy. It guarantees their code conforms to production budgets before they even open a Pull Request.
+
+**Q13. [Organizational Rollout] How do you deploy this across 50 different engineering squads running a mix of legacy and modern code without breaking their systems on day one?**
+* **Answer:** We implement a 'Shadow Mode' deployment strategy. Phase one routes traffic through the controller strictly to observe, hash, and log the data without blocking requests.
+* **Anticipated Follow-Up:** *How long do we stay in Shadow Mode before we actually save money?*
+* **Rebuttal:** Typically one sprint (14 days). We use that telemetry to establish a highly accurate mathematical baseline, completely eliminating false positives when we flip the switch to 'enforce.'
+
+**Q14. [CI/CD Integration] How do we ensure that updates to your governance policies don't accidentally break existing CI/CD pipelines for our application teams?**
+* **Answer:** Governance policies reside in a dedicated repository decoupled from application code. We use contract testing to ensure policy updates don't violate expected API behaviors.
+* **Anticipated Follow-Up:** *Are application teams blocked from deploying if the governance CI/CD pipeline is running?*
+* **Rebuttal:** No. Application and policy deployments are completely asynchronous. Applications consume the latest published policy dynamically without needing a rebuild.
+
+**Q15. [Noisy Neighbor] With multiple teams routing through the same central gateway, how do you prevent one team's viral traffic spike from degrading the latency for everyone else?**
+* **Answer:** We use strict multi-tenant isolation within the API gateway. The SAGC enforces rate-limiting and concurrent connection quotas strictly at the namespace level.
+* **Anticipated Follow-Up:** *What if the gateway pods themselves run out of CPU before the rate-limit triggers?*
+* **Rebuttal:** We utilize fair-queueing algorithms. The scheduler ensures every tenant receives their allocated slice of compute, throttling the aggressive tenant locally before it impacts the node.
+
+**Q16. [Telemetry Aggregation] If we log every single AI transaction across the company, aren't we going to DDoS our observability stack and blow up our Datadog/Splunk bill?**
+* **Answer:** We implement intelligent edge-sampling and metric aggregation. Instead of logging the raw payload of every successful request, we aggregate token metrics into histograms and counters.
+* **Anticipated Follow-Up:** *Don't we need exact logs for financial audits?*
+* **Rebuttal:** We perform 100% logging *only* for policy violations, errors, and break-glass events. Routine traffic is mathematically summarized, reducing log volume by 90% while maintaining financial accuracy.
+
+**Q17. [RBAC & Separation of Duties] Who has the authority to increase a budget threshold? How do we prevent an engineering manager from just approving their own team's budget increase?**
+* **Answer:** The GitOps pipeline enforces mandatory separation of duties using strict CODEOWNERS files. An engineering manager can author the Pull Request, but cannot merge it.
+* **Anticipated Follow-Up:** *Who merges it then? Does it sit in a queue for days?*
+* **Rebuttal:** It requires explicit cryptographic approval from a designated FinOps member. The pipeline structurally prevents unilateral increases while keeping the audit trail transparent.
+
+**Q18. [Legacy Monoliths] We have a massive legacy monolith that isn't running in Kubernetes. How do we integrate it into this architecture without rewriting the monolith?**
+* **Answer:** The SAGC supports a dual-deployment model. Legacy monoliths route their AI requests through an external, horizontally scaled instance of the SAGC acting as a reverse proxy.
+* **Anticipated Follow-Up:** *Doesn't routing a monolith through an external proxy introduce a massive network hop?*
+* **Rebuttal:** We deploy the proxy within the same VPC and availability zone as the monolith. This keeps the network hop to sub-millisecond local network transit, preserving legacy performance.
+
+**Q19. [API Versioning] When OpenAI releases a v2 API that breaks the schema, how do we update the controller without breaking legacy apps still calling v1?**
+* **Answer:** The SAGC gateway handles protocol translation and API version routing, directing v1 and v2 traffic to completely different policy evaluation chains.
+* **Anticipated Follow-Up:** *Are we stuck maintaining v1 policies forever?*
+* **Rebuttal:** No. We embed deprecation headers into the gateway's response for v1 traffic, alerting application teams that their endpoint will be hard-rejected after a pre-defined 90-day window.
+
+**Q20. [The "Build vs Buy" Execution] Why build this internally with open-source tools instead of paying for an enterprise LLM firewall? Won't maintaining this distract our SREs?**
+* **Answer:** Off-the-shelf SaaS firewalls act as a tax on our scale and cannot natively integrate into our custom Multi-Cloud DR fencing logic.
+* **Anticipated Follow-Up:** *But we still have to pay engineers to maintain this open-source stack, right?*
+* **Rebuttal:** By building on standard Kubernetes and OPA primitives that our SREs already use for standard network policies, there is effectively zero new tooling to learn. We are reusing existing operational muscle.
