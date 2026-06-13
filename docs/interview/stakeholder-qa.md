@@ -112,3 +112,55 @@ To maximize the efficiency of our upcoming architectural review, I have prepared
 * **Answer:** SaaS solutions charge per-transaction fees that scale exponentially with our traffic, acting as a tax on our growth. The SAGC is built on open-source standards with flat operational costs.
 * **Anticipated Follow-Up:** *But isn't the ongoing maintenance of internal software expensive and distracting?*
 * **Rebuttal:** By integrating natively with our existing pipelines, the maintenance overhead is absorbed into standard SRE operations. It secures our financial destiny without SaaS lock-in or recurring vendor taxes.
+
+#### Phase 3: Edge Cases & Organizational Friction (The Apocalypses)
+
+**Q21. [The "Success Disaster"] What if an AI agent is closing a massive enterprise deal, hits its budget limit, and your circuit breaker kills the transaction?**
+* **Answer:** We govern by business value. The SAGC integrates "Break-Glass" Rego policies that dynamically expand limits mid-transaction to secure revenue.
+* **Anticipated Follow-Up:** *Who audits the break-glass override? Does that become a backdoor for infinite spend?*
+* **Rebuttal:** Automated alerts go to Finance and SRE instantly. The override is temporary, tightly scoped to that specific transaction, and immutably logged for post-incident review.
+
+**Q22. [Malicious Internal Actor] What happens if a disgruntled engineer intentionally writes a script to burn millions of tokens overnight to hurt the company?**
+* **Answer:** The per-tenant and per-identity budgets mathematically cap the damage. The engineer would exhaust their specific namespace budget in minutes and be locked out.
+* **Anticipated Follow-Up:** *Could they elevate their privileges to alter the budget threshold?*
+* **Rebuttal:** Infrastructure as Code and CI/CD separation of duties prevent this. They cannot merge a pull request to the main branch to increase limits without peer review and FinOps approval.
+
+**Q23. [Prompt Injection Exfiltration] If an external attacker uses prompt injection to force our LLM to burn tokens processing garbage data, who pays for that?**
+* **Answer:** The SAGC detects and drops anomalous payload schemas and recursive loops, neutralizing the attack before significant token burn occurs.
+* **Anticipated Follow-Up:** *What if the attack is highly sophisticated and looks like legitimate traffic?*
+* **Rebuttal:** The namespace's daily budget cap acts as the ultimate backstop. We lose a strictly bounded, pre-defined amount of money, not the entire quarter's operational budget.
+
+**Q24. [Third-Party Outages] If OpenAI or GCP goes down entirely, does your controller keep trying to send requests and racking up retry fees?**
+* **Answer:** No. The SAGC implements exponential backoff and circuit breaking. After consecutive failures, it stops forwarding traffic and serves cached error codes.
+* **Anticipated Follow-Up:** *Does that mean our product goes completely dark?*
+* **Rebuttal:** We leverage multi-cloud failover. The controller instantly routes traffic to a secondary vendor (e.g., Anthropic on AWS) to maintain availability without runaway retry costs.
+
+**Q25. [Executive Bypass] What if the CEO demands immediate access to an experimental model that Finance hasn't budgeted for? Do you block the CEO?**
+* **Answer:** The system supports priority routing and VIP identity overrides. The CEO's request processes immediately via a dedicated executive budget pool.
+* **Anticipated Follow-Up:** *Doesn't that undermine the entire governance strategy?*
+* **Rebuttal:** No, it formalizes exceptions. The spend is still tracked, hashed, and attributed correctly, keeping visibility 100% accurate even during executive overrides.
+
+**Q26. [Zero-Day Vulnerability] If there is a zero-day exploit in the open-source OPA engine you are using, does our entire financial perimeter collapse?**
+* **Answer:** We operate on defense-in-depth. If OPA is compromised, the underlying Kubernetes network policies and VPC egress rules still restrict the nodes from unauthorized external communication.
+* **Anticipated Follow-Up:** *How quickly can we patch a zero-day in your controller?*
+* **Rebuttal:** Since it is deployed via containerized GitOps, we update the base image version in Terraform, merge, and the entire fleet is patched in minutes without human SSH access.
+
+**Q27. [The Vendor Billing Dispute] What if our internal telemetry says we spent $10,000, but the cloud provider bills us $50,000? How do we prove they are wrong?**
+* **Answer:** The SAGC generates cryptographically hashed, immutable logs of every token sent and received across the gateway.
+* **Anticipated Follow-Up:** *Will the cloud provider actually accept our logs in a dispute?*
+* **Rebuttal:** Yes, especially when correlated with our independent API gateway egress metrics. It gives Finance mathematical proof for vendor negotiations rather than relying on opaque billing dashboards.
+
+**Q28. [Compliance & Data Sovereignty] We have EU clients. If your controller is inspecting payloads to count tokens, is it violating GDPR by storing PII?**
+* **Answer:** No. The SAGC counts tokens and inspects schema metadata, but it is explicitly configured *not* to log or store the actual payload content.
+* **Anticipated Follow-Up:** *How do we prove that to an EU auditor?*
+* **Rebuttal:** The controller's source code and configuration are structurally validated. We can demonstrate that the logging modules lack the permissions or logic to write PII to disk.
+
+**Q29. [The "Too Big to Fail" Migration] If we want to move our largest, most profitable monolithic app behind this controller, how do you guarantee zero downtime during the cutover?**
+* **Answer:** We utilize weighted DNS routing and canary deployments. We route 1% of traffic through the SAGC initially, validate the financial telemetry, and incrementally scale to 100%.
+* **Anticipated Follow-Up:** *What if the 1% canary causes massive latency for those specific users?*
+* **Rebuttal:** Automated rollbacks trigger instantly if latency SLOs are breached, reverting traffic back to the direct route in seconds without human intervention.
+
+**Q30. [Acquisition Due Diligence] If we are preparing to be acquired, how does this system increase our enterprise valuation?**
+* **Answer:** It transforms our AI infrastructure from a high-risk liability into a mathematically governed asset, proving to acquirers that our unit economics are predictable and secure.
+* **Anticipated Follow-Up:** *Do investors actually care about infrastructure governance?*
+* **Rebuttal:** Absolutely. An acquirer's biggest fear is inheriting unquantifiable technical debt and runaway cloud OpEx. The SAGC's immutable audit trails completely de-risk that portion of the due diligence.
