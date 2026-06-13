@@ -313,3 +313,55 @@ To maximize the efficiency of our upcoming architectural review, I have prepared
 * **Answer:** Off-the-shelf SaaS firewalls act as a tax on our scale and cannot natively integrate into our custom Multi-Cloud DR fencing logic.
 * **Anticipated Follow-Up:** *But we still have to pay engineers to maintain this open-source stack, right?*
 * **Rebuttal:** By building on standard Kubernetes and OPA primitives that our SREs already use for standard network policies, there is effectively zero new tooling to learn. We are reusing existing operational muscle.
+
+#### Phase 3: Edge Cases & Organizational Friction (The Apocalypses)
+
+**Q21. [Recursive DDoS] What happens if an AI agent gets confused and spawns hundreds of sub-agents, essentially DDoSing our internal APIs?**
+* **Answer:** The controller tracks execution context via distributed tracing. We enforce 'recursion depth boundaries' across the entire agent tree.
+* **Anticipated Follow-Up:** *Does it just throttle them, or stop them entirely?*
+* **Rebuttal:** If a parent agent spawns child agents that exceed configured depth limits, the SAGC issues a hard-kill to the entire transaction tree and alerts SRE.
+
+**Q22. [Prompt Injection Exfiltration] If an attacker hijacks an agent via prompt injection, how do you prevent data exfiltration?**
+* **Answer:** The SAGC operates on zero-trust. Agents lack direct internet access; all outbound requests pass through the proxy for strict schema validation and payload inspection.
+* **Anticipated Follow-Up:** *Can't they encode exfiltrated data into a seemingly valid API request?*
+* **Rebuttal:** We enforce DLP pattern matching at the egress gateway and restrict destination IPs dynamically. Anomalous packets are dropped before leaving the VPC.
+
+**Q23. [The "Thundering Herd"] When we failover to AWS, won't thousands of queued client requests retry simultaneously and overwhelm the new gateway?**
+* **Answer:** We prevent the thundering herd using exponential backoff and randomized "jitter" in client SDKs, combined with strict admission control at the gateway.
+* **Anticipated Follow-Up:** *What if we don't control the client SDKs calling our API?*
+* **Rebuttal:** The gateway utilizes token-bucket rate limiting. It gracefully sheds excess load by returning HTTP 429s with a `Retry-After` header to smooth the spike.
+
+**Q24. [State Database Corruption] If the Redis cache corrupts, does the controller deny all traffic or allow all traffic?**
+* **Answer:** It depends on the risk profile. We configure a "fail-close" fallback for high-cost models, and a "fail-open" state for critical revenue-generating paths.
+* **Anticipated Follow-Up:** *If we fail-open, aren't we exposed to infinite spend until Redis is restored?*
+* **Rebuttal:** Sidecars enforce hard-coded, fallback local rate limits. You might overspend a localized micro-budget briefly, but systemic runaway events remain mathematically impossible.
+
+**Q25. [Supply Chain Compromise] What if the base Docker image for the OPA sidecar is compromised with malware before we pull it?**
+* **Answer:** We utilize cryptographic image signing (Cosign/Sigstore). Kubernetes admission controllers block the deployment of any image lacking a valid internal security signature.
+* **Anticipated Follow-Up:** *What if the compromise is a zero-day that bypasses the signature?*
+* **Rebuttal:** We rely on runtime security (Falco/Cilium). If the sidecar attempts an anomalous system call, the runtime security engine kills the pod instantly.
+
+**Q26. [VPC Egress Bypass] What stops a developer from SSH-ing into their pod and curling the vendor API directly, bypassing your sidecar?**
+* **Answer:** We employ default-deny Kubernetes Network Policies. The network only allows outbound connections to vendor APIs if traffic originates from the authorized SAGC proxy nodes.
+* **Anticipated Follow-Up:** *Won't that break legitimate debugging workflows?*
+* **Rebuttal:** Debugging should not happen via SSH in production. We provide ephemeral sandbox environments with elevated privileges strictly separated from production data.
+
+**Q27. [Vendor Rate Limit Saturation] What if we legitimately hit OpenAI's global API rate limits before our internal budgets? Does our system crash?**
+* **Answer:** The SAGC acts as an intelligent backpressure valve. When it detects upstream HTTP 429s, it pauses outbound forwarding and queues internal requests.
+* **Anticipated Follow-Up:** *Doesn't queuing requests tie up memory until we OOM crash?*
+* **Rebuttal:** The queue has a strict maximum depth. Once full, the SAGC sheds load locally, returning immediate failures rather than holding dead connections open.
+
+**Q28. [Malicious LLM Responses] What if the vendor model gets poisoned and returns malicious executable code to our internal agents?**
+* **Answer:** Governance is bidirectional. The SAGC intercepts the return payload and enforces strict schema validation on the response.
+* **Anticipated Follow-Up:** *How do you validate a generative model response?*
+* **Rebuttal:** We force structured output formats (strict JSON schemas). If the LLM returns executable bash scripts or malformed data, the SAGC drops the payload immediately.
+
+**Q29. [Cross-Tenant Data Leakage] Can Tenant A's sidecar read or overwrite Tenant B's budget in the shared Redis cache?**
+* **Answer:** No. We enforce strict multi-tenant isolation using logical databases, distinct keyspaces, and Role-Based Access Control (RBAC) at the connection level.
+* **Anticipated Follow-Up:** *Are the connections to the cache encrypted?*
+* **Rebuttal:** Yes. All intra-cluster communication is secured via strict mTLS enforced by our service mesh, preventing packet sniffing between tenants.
+
+**Q30. [The "Zombie Agent"] What happens if an agent loses its network connection to the control plane but keeps executing an expensive recursive loop locally?**
+* **Answer:** We enforce hard timeouts and Execution Time-To-Live (TTL) limits at the orchestrator layer.
+* **Anticipated Follow-Up:** *What if the agent's code catches the timeout exception and ignores it?*
+* **Rebuttal:** The timeout is enforced by Kubernetes, not the application. The kubelet issues a `SIGKILL`, terminating the process at the kernel level. It cannot be bypassed.
