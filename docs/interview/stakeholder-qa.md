@@ -514,3 +514,55 @@ To maximize the efficiency of our upcoming architectural review, I have prepared
 * **Answer:** The deployment pipeline exports a cryptographically hashed state file every time a policy is applied, mapped directly to SOC2 and ISO27001 control frameworks.
 * **Anticipated Follow-Up:** *Does this require massive manual effort from compliance to parse?*
 * **Rebuttal:** No. We integrate with compliance automation tools (Vanta/Drata). Configuration state and logs are continuously ingested as automated evidence.
+
+#### Phase 3: Edge Cases & Organizational Friction (The Apocalypses)
+
+**Q21. [Vendor Compromise] What if OpenAI/Anthropic is breached, and the attacker attempts to use our established API connections to attack our VPC backwards?**
+* **Answer:** Connections are strictly outbound. Our stateful VPC egress firewalls drop unsolicited inbound packets.
+* **Anticipated Follow-Up:** *What if the attacker sends malicious executable payloads as the response?*
+* **Rebuttal:** Governance is bidirectional. The SAGC intercepts the return payload and enforces strict schema validation, dropping executable code or malformed data before it reaches internal applications.
+
+**Q22. [Model Inversion & Data Extraction] What if an attacker uses prompt injection to make our LLM spit out its training data, including proprietary source code?**
+* **Answer:** The SAGC acts as an egress DLP engine. We apply regex and entropy analysis to the outbound payload to block patterns matching our proprietary IP or source code.
+* **Anticipated Follow-Up:** *How do you block code snippets without breaking our internal coding-assistant bots?*
+* **Rebuttal:** We enforce context-aware routing. The coding assistant namespace is the only tenant allowed to receive code-structured responses. Other namespaces drop it instantly.
+
+**Q23. [Advanced Persistent Threat (APT)] If an APT establishes persistence in an application pod, how do they move laterally to take over the SAGC?**
+* **Answer:** Lateral movement is blocked by our service mesh. The SAGC requires mutually authenticated TLS (mTLS) and strict NetworkPolicies, limiting communication to authorized endpoints.
+* **Anticipated Follow-Up:** *What if they steal the pod's service account token?*
+* **Rebuttal:** Tokens are short-lived and audience-bound. Even if stolen, the attacker cannot access the SAGC's control plane due to strict Role-Based Access Control (RBAC) segregation.
+
+**Q24. [Cryptographic Obsolescence] When quantum computing breaks current TLS/RSA encryption, does our entire AI proxy mesh become transparent?**
+* **Answer:** The SAGC abstracts the encryption layer. TLS is handled by service mesh sidecars, allowing us to globally swap cipher suites to Post-Quantum Cryptography (PQC) without rewriting application code.
+* **Anticipated Follow-Up:** *But external vendor connections are outside our mesh?*
+* **Rebuttal:** We enforce minimum TLS 1.3 at the gateway. If vulnerable, we can immediately route vendor traffic through quantum-safe VPN tunnels managed at the VPC boundary.
+
+**Q25. [The Rogue FinOps Admin] What if a FinOps admin goes rogue and approves a massive budget for an attacker-controlled namespace?**
+* **Answer:** We enforce cryptographic separation of duties. FinOps approves the *amount*, but SecOps approves the *destination endpoint*.
+* **Anticipated Follow-Up:** *What if the FinOps admin and SecOps admin collude?*
+* **Rebuttal:** Anomaly detection acts as a final tripwire. A sudden velocity spike in token consumption triggers a hard circuit breaker based on statistical deviation, requiring Executive VP sign-off.
+
+**Q26. [Supply Chain - Poisoned Weights] If an open-source model has a built-in backdoor ("sleeper agent"), how does the SAGC catch it?**
+* **Answer:** Static scanning misses sleeper agents, so we rely on behavioral containment. The payload must still pass strict egress filters that block unauthorized network calls, regardless of the backdoor.
+* **Anticipated Follow-Up:** *What if the sleeper agent subtly corrupts data rather than exfiltrates it?*
+* **Rebuttal:** We enforce deterministic validation by occasionally routing duplicate baseline prompts to the model and comparing outputs, quarantining models with unexplained deviations.
+
+**Q27. [Layer 7 DDoS] An attacker uses a botnet to send millions of perfectly formatted, schema-valid requests, bypassing the WAF. How do you stop this?**
+* **Answer:** The SAGC employs dynamic, token-bucket rate limiting tied to individual user identities or JWTs, not just IPs, throttling compromised accounts instantly.
+* **Anticipated Follow-Up:** *What if the botnet uses millions of distinct, compromised accounts?*
+* **Rebuttal:** We degrade gracefully. When global concurrency thresholds are breached, the SAGC triggers the WAF to inject CAPTCHA or Proof-of-Work challenges, neutralizing bots.
+
+**Q28. [Cloud Provider Control Plane Failure] If GCP's IAM control plane goes down, does our SAGC fail open and expose the system?**
+* **Answer:** We configure the SAGC to fail-close during a critical identity provider outage.
+* **Anticipated Follow-Up:** *Doesn't that cause a total system outage?*
+* **Rebuttal:** Yes. During a total IAM failure, we prioritize data confidentiality and integrity over availability, accepting downtime rather than trusting unauthenticated traffic.
+
+**Q29. [Side-Channel Attacks] Can an attacker co-located on the same Kubernetes node infer prompt data by monitoring CPU/memory caches (Spectre/Meltdown)?**
+* **Answer:** We eliminate this vector using dedicated node pools, using Kubernetes taints and tolerations to physically isolate SAGC gateway compute from general application compute.
+* **Anticipated Follow-Up:** *Doesn't dedicating hardware defeat the cost savings of Kubernetes?*
+* **Rebuttal:** The proxy layer is highly efficient. The required compute footprint is negligible compared to the existential risk of cross-tenant, side-channel data leakage.
+
+**Q30. [The Legal Subpoena] Legal gets a subpoena demanding the exact prompts a user sent to the AI over the last 3 years. Can you provide it?**
+* **Answer:** No. By design, the SAGC logs only cryptographic hashes of the payloads for audit validation, not raw text. We cannot provide what we do not possess.
+* **Anticipated Follow-Up:** *Will Legal accept that we deliberately blinded ourselves?*
+* **Rebuttal:** Yes, this is a planned data minimization strategy explicitly approved by Legal and the DPO to reduce e-discovery liability and GDPR exposure.
