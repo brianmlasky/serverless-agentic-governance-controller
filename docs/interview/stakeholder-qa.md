@@ -462,3 +462,55 @@ To maximize the efficiency of our upcoming architectural review, I have prepared
 * **Answer:** The blast radius is severely contained. Containers run as non-root, with read-only file systems, and Linux capabilities dropped via strict Pod Security Admission.
 * **Anticipated Follow-Up:** *Can they use the service account to take over the cluster?*
 * **Rebuttal:** No. The SAGC service account is bound by strict RBAC, lacking permissions to read outside secrets or execute commands on other containers.
+
+#### Phase 2: Systemic Integration & Scaling (Operations & Friction)
+
+**Q11. [Multi-Cloud Security Drift] How do you guarantee our AWS disaster recovery environment doesn't suffer from security drift and accidentally expose workloads?**
+* **Answer:** Security policies are treated as immutable infrastructure. The exact same Terraform modules and OPA policies deploy to both GCP and AWS simultaneously via CI/CD, ensuring mathematical equivalence.
+* **Anticipated Follow-Up:** *What if an admin manually changes a security group in AWS during a fire drill?*
+* **Rebuttal:** We run continuous drift detection loops. Unauthorized manual changes trigger an immediate P1 alert to the SOC and are automatically remediated back to the Git baseline within minutes.
+
+**Q12. [AI/ML Developer Friction] The AI/ML Lead complains your proxy strips custom metadata headers needed for RAG model tuning. How do we resolve this?**
+* **Answer:** The SAGC acts as a transparent proxy for authorized schemas. We utilize a declarative header-passthrough registry rather than blindly stripping all headers.
+* **Anticipated Follow-Up:** *Does whitelisting custom headers open us up to HTTP header injection attacks?*
+* **Rebuttal:** No. The AI team must define the exact regex schema for their custom headers in the infrastructure code. The proxy validates the format before passing it through.
+
+**Q13. [Shadow AI & Model Registries] Developers are downloading unverified weights directly from Hugging Face. How do we stop this?**
+* **Answer:** We enforce strict VPC egress controls blocking direct access to external model hubs. Developers must route pulls through an internal, secured model registry (like Artifactory).
+* **Anticipated Follow-Up:** *Who scans those models before they get into our internal registry?*
+* **Rebuttal:** The DevSecOps pipeline automatically scans incoming models for embedded malware, serialized object vulnerabilities, and poisoned weights before authorizing them for internal use.
+
+**Q14. [CI/CD Pipeline Integrity] Isn't the CI/CD pipeline deploying the SAGC now our biggest single point of failure?**
+* **Answer:** Yes, which is why the pipeline is hardened to SLSA Level 3 standards. We use short-lived OIDC tokens and require multi-party cryptographic sign-offs to merge policy changes.
+* **Anticipated Follow-Up:** *What if a developer's laptop is compromised and their SSH key stolen?*
+* **Rebuttal:** Code merges require hardware-backed MFA (YubiKeys) for commit signing, neutralizing stolen SSH keys or compromised local credentials.
+
+**Q15. [Data Privacy in Lower Environments] The Data Privacy Officer (DPO) is terrified developers are using real PII to test agents locally. How do you enforce sanitization?**
+* **Answer:** Production databases are isolated. When routing traffic to staging or local sandboxes, the SAGC enforces a "Data Masking" policy that redacts or tokenizes PII before reaching lower environments.
+* **Anticipated Follow-Up:** *Does tokenizing data break the AI's ability to understand the prompt?*
+* **Rebuttal:** We use format-preserving encryption (FPE). The AI sees realistic, formatted synthetic data (e.g., a valid-looking fake SSN), allowing logic to work perfectly without exposing real identities.
+
+**Q16. [SIEM Cost vs Context] Sending every AI payload log to our SIEM will cost a fortune. How do we filter for security relevance?**
+* **Answer:** We implement intelligent edge-filtering. Routine requests are aggregated into metrics. We only forward full payloads to the SIEM when the SAGC detects an anomaly or policy violation.
+* **Anticipated Follow-Up:** *How do we establish a baseline of "normal" if we only log anomalies?*
+* **Rebuttal:** We send a 1% randomized statistical sample of normal traffic to a cheap cold-storage data lake (S3) for baseline modeling, reserving the expensive SIEM for actionable events.
+
+**Q17. [SOC Alert Fatigue] How does the SAGC integrate with the SOC without flooding them with false positives every time an agent is rate-limited?**
+* **Answer:** Rate limits are FinOps events routed strictly to SRE/Platform teams. The SOC only receives alerts correlated with security heuristics (e.g., repeated prompt injection attempts).
+* **Anticipated Follow-Up:** *Can the SAGC automatically block the IP without waking up a SOC analyst?*
+* **Rebuttal:** Yes. The SAGC integrates directly with our WAF. It automatically pushes an IP-ban rule to the edge firewall for targeted attacks, neutralizing the threat autonomously.
+
+**Q18. [B2B Integrations] How does the SAGC securely authenticate external B2B client traffic without exposing internal endpoints?**
+* **Answer:** External traffic terminates at our public API Gateway for OAuth2/JWT validation. The SAGC sits behind it, trusting verified JWT claims to enforce tenant-specific rate limits and schemas.
+* **Anticipated Follow-Up:** *What if the external client accidentally loops and burns our backend budget?*
+* **Rebuttal:** The JWT contains their specific Tenant ID. The SAGC enforces a strict per-tenant budget. They exhaust their own isolated quota without impacting internal budgets.
+
+**Q19. [Emergency Break-Glass] During a massive P1 outage, who has authority to bypass the SAGC, and how is it secured?**
+* **Answer:** Nobody has standing access. We use Just-In-Time (JIT) access. An authorized incident commander requests elevated credentials that automatically expire after a predefined window (e.g., 2 hours).
+* **Anticipated Follow-Up:** *Can they use break-glass access to alter audit logs?*
+* **Rebuttal:** No. Audit logs are streamed asynchronously to physically separate, Write-Once-Read-Many (WORM) storage that even break-glass administrators lack IAM permissions to modify.
+
+**Q20. [Continuous Compliance] How do we automatically prove to auditors the SAGC was enforcing policy on a specific date six months ago?**
+* **Answer:** The deployment pipeline exports a cryptographically hashed state file every time a policy is applied, mapped directly to SOC2 and ISO27001 control frameworks.
+* **Anticipated Follow-Up:** *Does this require massive manual effort from compliance to parse?*
+* **Rebuttal:** No. We integrate with compliance automation tools (Vanta/Drata). Configuration state and logs are continuously ingested as automated evidence.
