@@ -46,3 +46,20 @@ spec:
   - ports:
     - port: 3307
       protocol: TCP
+---
+# Policy 4: Allow HTTPS egress for the Gateway to reach external LLM APIs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-llm-provider-egress
+  namespace: litellm
+spec:
+  podSelector:
+    matchLabels:
+      app: litellm-gateway
+  policyTypes:
+  - Egress
+  egress:
+  - ports:
+    - port: 443
+      protocol: TCP
