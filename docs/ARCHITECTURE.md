@@ -1,27 +1,27 @@
-# Architecture: Serverless Agentic Governance Controller
+# Architecture: Serverless Agentic Governance Controller (SAGC)
 
 ## 📖 Overview
-The Serverless Agentic Governance Controller acts as a fail-closed circuit breaker for autonomous AI workloads. It intercepts LLM API requests, enforces real-time fiscal guardrails, and prevents runaway cloud token spend through atomic budget decrements.
+The SAGC is an infrastructure-level admission controller designed for autonomous AI workloads running on Serverless Kubernetes (GKE Autopilot). It intercepts outbound LLM inference requests at the network layer, executing mathematical fiscal governance via Open Policy Agent (OPA) to prevent infinite-loop token burn.
 
 ## 🏗️ System Components
 
-1. **The Workload (AI Agents):** Python or Node.js autonomous agents generating dynamic prompts.
-2. **The Control Plane (API Gateway):** The internal enforcement point. Handles authentication, rate limiting, and routes all authorized traffic.
-3. **The Governance Controller (Vercel):** Serverless edge functions executing business logic and policy enforcement.
-4. **The Atomic State Store (Upstash / Serverless Redis):** A low-latency caching layer operating over REST to prevent serverless connection pool exhaustion.
-5. **The Data Plane (Vertex AI / OpenAI):** The upstream LLM providers.
+1. **The Workload:** AI agents containerized and running within Kubernetes pods.
+2. **The Interceptor (Envoy/Sidecar):** A network proxy injected into the agent pod that intercepts all egress HTTP traffic destined for LLM providers (e.g., OpenAI, Vertex AI).
+3. **The Policy Engine (Open Policy Agent):** An OPA container running alongside the proxy. It evaluates the outbound request against locally cached budget policies.
+4. **The Telemetry Stack (Prometheus):** Scrapes the sidecars for `x-sagc-tokens-consumed` and `budget_exhaustion_events` to provide real-time dashboarding.
+5. **Infrastructure as Code (Terraform):** The entire stack, including Workload Identity Federation (WIF) and GKE Autopilot clusters, is provisioned via idempotent Terraform modules.
 
-## 🚦 Request Flow & Settlement Lifecycle
+## 🚦 The Control Flow
 
-1. **The Request Hook:** An AI agent fires a prompt. It is forced through the internal API Gateway to prevent shadow IT.
-2. **Pre-Flight Check (Fail-Closed):** The Gateway queries the Vercel Governance Controller. 
-   * *State Check:* Does this specific agent have sufficient budget? 
-   * *Guardrail:* If the Redis lookup times out or fails, the system strictly **fails closed** and denies the request. Fiscal safety supersedes availability.
-3. **The Execution:** Authorized requests are securely routed to the LLM provider.
-4. **The Settlement (Async Webhook):** The Gateway intercepts the LLM response, extracts the exact token usage from the response headers, and fires an asynchronous webhook back to the Governance Controller.
-5. **Atomic Decrement:** The Governance Controller updates the agent's budget in Redis using an atomic transaction, eliminating race conditions even when 50+ concurrent agent threads execute simultaneously.
+1. **The Request:** An AI agent attempts to send a prompt to the OpenAI API.
+2. **The Interception:** The sidecar proxy traps the outbound request before it leaves the pod network.
+3. **Policy Evaluation (Rego):** The proxy asks OPA, "Does this workload have sufficient budget to execute?" OPA evaluates its Rego policies and the current atomic budget state.
+4. **Fail-Closed Enforcement:** * *Authorized:* The proxy forwards the request to the LLM.
+   * *Denied:* The proxy drops the packet, returning a `402 Payment Required` to the agent.
+5. **Settlement & Observability:** Post-execution, the exact token usage is parsed from the LLM response headers, the budget state is decremented, and Prometheus scrapes the updated metrics.
 
 ## 🛡️ Key Architectural Decisions (ADRs)
 
-* **Serverless Redis over TCP Redis:** Elected to use Upstash (REST-based Redis) over standard TCP Redis to eliminate connection pool exhaustion during massive parallel Vercel function invocations.
-* **Fail-Closed Posture:** The system intentionally degrades gracefully by blocking AI requests during governance outages, protecting the core business P&L from infinite-loop hallucinations.
+* **Network-Level Enforcement over Application Logic:** Elected to use a sidecar proxy rather than requiring developers to import a specific SDK. This ensures governance is mathematically enforced regardless of what language (Python, Node, Go) the agent is written in.
+* **Open Policy Agent (OPA):** Chose OPA for Policy-as-Code to decouple business governance rules from the proxy routing logic, allowing security teams to audit Rego files via GitOps.
+* **GKE Autopilot (Serverless K8s):** Deployed on GKE Autopilot to abstract node management and auto-scaling, maintaining a serverless operational footprint while leveraging standard Kubernetes admission controllers.
