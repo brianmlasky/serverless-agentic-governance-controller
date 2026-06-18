@@ -1,0 +1,13 @@
+customRules:
+  falco_rules.local.yaml: |-
+    - rule: Terminal Shell in SAGC Container
+      desc: Detects an attempt to spawn an interactive shell inside the governance proxy container. This is a severe indicator of compromise (RCE).
+      condition: >
+        spawned_process and container
+        and container.image.repository contains "agentic-proxy-repo"
+        and proc.name in (shell_binaries)
+      output: >
+        CRITICAL: Shell spawned in SAGC proxy container! 
+        (user=%user.name container_id=%container.id image=%container.image.repository shell=%proc.name cmdline=%proc.cmdline)
+      priority: CRITICAL
+      tags: [container, mitre_execution, pci, incident_response]
