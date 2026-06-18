@@ -47,3 +47,6 @@ Before adopting a new framework or technology, it must pass the following checks
 *   **Longevity Test:** Is the project backed by a foundation/enterprise, or a single maintainer?
 *   **Operational Maturity:** Does it natively integrate with existing Terraform modules and telemetry stacks without custom "glue code"?
 *   **Adoption Protocol:** Execute a two-day "Spike" (Proof-of-Concept) to validate business value before architectural inclusion.
+
+## Sidecar Injection Lifecycle
+SAGC sidecars are injected via automatic admission webhooks. Upgrades are managed by updating the mesh control plane in `terraform/` and performing a rolling rollout: `kubectl rollout restart deployment -n agentic`.
