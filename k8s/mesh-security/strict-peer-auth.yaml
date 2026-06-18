@@ -1,0 +1,9 @@
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default-strict-mtls
+  namespace: litellm
+spec:
+  # Enforce that all workloads in this namespace MUST use mTLS
+  mtls:
+    mode: STRICT
