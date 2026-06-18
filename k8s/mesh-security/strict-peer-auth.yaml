@@ -5,5 +5,8 @@ metadata:
   namespace: litellm
 spec:
   # Enforce that all workloads in this namespace MUST use mTLS
+  # ARCHITECTURAL NOTE: STRICT mode blocks cleartext. 
+  # You MUST configure port-level exclusions (e.g., port 9090) 
+  # or add your metrics scraper to the mesh to prevent Prometheus/health-probe outages.
   mtls:
     mode: STRICT
