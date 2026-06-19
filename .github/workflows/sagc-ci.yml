@@ -11,12 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
+      # 1. Install OPA on this specific runner first
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: 'latest'
+
+      # 2. Now these commands will succeed
       - name: Lint Rego Policies
         run: opa check k8s/policies/sidecar/budget_guardrail.rego
+        
       - name: Kube-Linter
         uses: stackrox/kube-linter-action@v1
         with:
           directory: k8s/
+          
       - name: Validate Policy Logic
         run: |
           opa eval --data k8s/policies/sidecar/budget_guardrail.rego "data.sagc.authz.allow"
@@ -26,10 +36,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          
       - name: Execute Chaos Engineering Suite
         run: |
           make install
