@@ -35,3 +35,4 @@ spec:
   template:
     spec:
       containers: []
+  containers: []

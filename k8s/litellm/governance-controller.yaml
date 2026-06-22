@@ -49,8 +49,19 @@ spec:
       template:
         spec:
           containers: []
+  containers: []
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: api-gateway-sa
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

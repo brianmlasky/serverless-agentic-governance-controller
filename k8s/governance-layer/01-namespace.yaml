@@ -7,3 +7,13 @@ metadata:
     purpose: agentic-proxy
     # Standard practice: labeling for network policy isolation
     name: governance
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

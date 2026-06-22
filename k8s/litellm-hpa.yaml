@@ -29,9 +29,8 @@ metadata:
     memory-baseline-mi: "780"
     memory-request: "1Gi"
     change-reason: >
-      780Mi is fixed LiteLLM 1.82.x / Python 3.13 baseline.
-      90% target keeps idle 2-replica state stable (77% < 90%).
-      Scale-up fires only under real traffic pressure.
+      780Mi is fixed LiteLLM 1.82.x / Python 3.13 baseline. 90% target keeps idle 2-replica state stable (77% < 90%). Scale-up fires only under real traffic pressure.
+
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -67,3 +66,12 @@ spec:
           value: 1
           periodSeconds: 60
       selectPolicy: Max
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

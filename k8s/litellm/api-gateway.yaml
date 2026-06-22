@@ -34,6 +34,9 @@ spec:
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
           readinessProbe:
             httpGet:
               path: /health
@@ -46,6 +49,13 @@ spec:
               port: 4000
             initialDelaySeconds: 15
             periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
         - name: cloud-sql-proxy
           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.1
           args:
@@ -56,3 +66,19 @@ spec:
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

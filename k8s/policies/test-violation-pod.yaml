@@ -8,3 +8,23 @@ spec:
     - name: hungry-container
       image: nginx:v1.0.0
       # Deliberately missing the 'resources' block to trigger the fiscal limit violation
+
+      securityContext:
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1000
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []

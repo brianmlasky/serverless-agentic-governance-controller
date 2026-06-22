@@ -7,7 +7,16 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Egress
+    - Egress
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 # Policy 2: Allow DNS egress for all pods
 apiVersion: networking.k8s.io/v1
@@ -18,13 +27,22 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - ports:
-    - port: 53
-      protocol: UDP
-    - port: 53
-      protocol: TCP
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 # Policy 3: Allow Cloud SQL proxy egress only for authorized pods
 apiVersion: networking.k8s.io/v1
@@ -35,17 +53,26 @@ metadata:
 spec:
   podSelector:
     matchExpressions:
-    - key: app
-      operator: In
-      values:
-      - api-gateway
-      - litellm-gateway
+      - key: app
+        operator: In
+        values:
+          - api-gateway
+          - litellm-gateway
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - ports:
-    - port: 3307
-      protocol: TCP
+    - ports:
+        - port: 3307
+          protocol: TCP
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 # Policy 4: Allow HTTPS egress for the Gateway to reach external LLM APIs
 apiVersion: networking.k8s.io/v1
@@ -58,8 +85,17 @@ spec:
     matchLabels:
       app: litellm-gateway
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - ports:
-    - port: 443
-      protocol: TCP
+    - ports:
+        - port: 443
+          protocol: TCP
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

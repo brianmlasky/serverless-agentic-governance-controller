@@ -15,3 +15,12 @@ spec:
       port: 80
       protocol: TCP
       targetPort: 4000
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

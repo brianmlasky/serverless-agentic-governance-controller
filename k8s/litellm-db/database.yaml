@@ -17,6 +17,7 @@ spec:
       template:
         spec:
           containers: []
+  containers: []
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -70,6 +71,7 @@ spec:
       template:
         spec:
           containers: []
+  containers: []
 ---
 apiVersion: v1
 kind: Service
@@ -92,3 +94,4 @@ spec:
       template:
         spec:
           containers: []
+  containers: []

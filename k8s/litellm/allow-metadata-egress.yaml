@@ -8,17 +8,26 @@ spec:
     matchLabels:
       app: api-gateway
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - to:
-    - ipBlock:
-        cidr: 169.254.169.254/32 # Metadata Server
-    ports:
-    - protocol: TCP
-      port: 80
-  - to:
-    - ipBlock:
-        cidr: 0.0.0.0/0 # Cloud SQL API
-    ports:
-    - protocol: TCP
-      port: 443
+    - to:
+        - ipBlock:
+            cidr: 169.254.169.254/32 # Metadata Server
+      ports:
+        - protocol: TCP
+          port: 80
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0 # Cloud SQL API
+      ports:
+        - protocol: TCP
+          port: 443
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

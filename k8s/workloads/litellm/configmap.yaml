@@ -4,7 +4,7 @@ metadata:
   name: litellm-config
   namespace: agentic
 data:
-  config.yaml: |
+  config.yaml: |-
     model_list:
       - model_name: "claude-sonnet"
         litellm_params:
@@ -12,3 +12,13 @@ data:
           model: "bedrock/global.anthropic.claude-sonnet-4-6"
     litellm_settings:
       drop_params: true
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
