@@ -20,3 +20,6 @@ To ensure end-to-end fiscal integrity without incurring cloud database costs:
 ## Consequences
 * **Positive:** Achieves linearizable fiscal integrity at $0.00 additional cost; eliminates fiscal slippage via Lua atomicity.
 * **Negative:** Moves the burden of consistency from the database layer to the application layer; requires rigorous testing of Lua scripts.
+
+## Update (2026-06-22): Cryptographic Fencing
+To mitigate replay attacks identified in the 2026-06-22 Adversarial Audit, we are deprecating simple monotonic tokens. All fencing tokens must now be HMAC-SHA256 signatures derived from a server-side secret, bound to an `agent_id` and a 5-minute expiry window.
