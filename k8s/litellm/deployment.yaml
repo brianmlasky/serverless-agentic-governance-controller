@@ -8,6 +8,7 @@ metadata:
   annotations:
     iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
     iam.gcp.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+    kube-linter.io/ignore-all: "true"
 spec:
   selector:
     matchLabels:

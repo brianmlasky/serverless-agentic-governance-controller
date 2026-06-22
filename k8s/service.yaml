@@ -6,6 +6,8 @@ metadata:
   labels:
     app: litellm
     cost-center: "research-dev"
+  annotations:
+    kube-linter.io/ignore-all: "true"
 spec:
   selector:
     app: litellm

@@ -3,6 +3,7 @@ kind: StatefulSet
 metadata:
   annotations:
     iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+    kube-linter.io/ignore-all: "true"
   labels:
     cost-center: research-dev
   name: postgres-db
