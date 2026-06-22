@@ -23,6 +23,11 @@ spec:
           ports:
             - containerPort: 8000
           env:
+        - name: SAGC_FENCING_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: sagc-fencing-secret
+              key: SAGC_FENCING_SECRET
             # Dynamically route to the local LiteLLM service
             - name: LITELLM_PROXY_URL
               value: "http://litellm-service.agentic.svc.cluster.local:4000"
