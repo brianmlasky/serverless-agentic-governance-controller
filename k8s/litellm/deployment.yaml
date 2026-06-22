@@ -23,8 +23,23 @@ spec:
     spec:
       serviceAccountName: litellm-sa
       containers:
-      - name: litellm
-        image: docker.io/litellm/litellm:v1.84.0
-        securityContext:
-          privileged: false
-          allowPrivilegeEscalation: false
+        - name: litellm
+          image: docker.io/litellm/litellm:v1.84.0
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []

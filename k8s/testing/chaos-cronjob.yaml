@@ -11,13 +11,27 @@ spec:
       template:
         spec:
           containers:
-          - name: redis-chaos
-            image: redis:7-alpine
-            command:
-            - /bin/sh
-            - -c
-            - |
-              echo "[CHAOS INITIATED] Deleting global primary lock to simulate region failure..."
-              redis-cli -h redis-master.litellm.svc.cluster.local DEL global-primary-lock
-              echo "[CHAOS COMPLETE] Lock destroyed. Telemetry should now show 100% egress failure."
+            - name: redis-chaos
+              image: redis:7-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "[CHAOS INITIATED] Deleting global primary lock to simulate region failure..."
+                  redis-cli -h redis-master.litellm.svc.cluster.local DEL global-primary-lock
+                  echo "[CHAOS COMPLETE] Lock destroyed. Telemetry should now show 100% egress failure."
+              securityContext:
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
           restartPolicy: OnFailure
+  template:
+    spec:
+      containers: []
