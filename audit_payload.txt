@@ -1,0 +1,628 @@
+# ADR 001: Decoupling Fiscal Governance via Sidecar Proxy
+
+**Date:** 2026-06-05
+**Status:** Accepted
+**Primary Business Driver:** Protect organizational OpEx (budget) from infinite AI reasoning loops without sacrificing developer velocity.
+
+## Context
+As we scale autonomous AI workloads, the business requires a hard fiscal circuit breaker. The architectural challenge is enforcing strict "Token Burn Rate" limits without forcing our data science and engineering teams to rewrite their agents or learn complex governance libraries. 
+
+## Decision
+We will implement the Serverless Agentic Governance Controller (SAGC) as an out-of-process **Sidecar Proxy**. All outbound egress traffic to LLM providers will be forcibly routed through this sidecar via network-layer interception.
+
+## Considered Alternatives
+1.  **Application-Level SDK (Rejected):** Forcing developers to import a budget-checking library. *Why rejected:* High developer friction. Vulnerable to accidental bypass if a developer forgets to invoke the library. Not language-agnostic.
+2.  **Full Service Mesh e.g., Istio/Linkerd (Rejected):** Deploying a global service mesh for L7 traffic management. *Why rejected:* Massive operational tax and complexity. We currently only require outbound API governance, making a full mesh an over-engineered "sledgehammer" that violates our complexity budget.
+3.  **Serverless API Gateway (Rejected):** Routing all agents through a centralized cloud gateway. *Why rejected:* Introduces a single global point of failure and potential latency bottlenecks for internal cluster traffic.
+
+## Rationale
+* **Immutability of Governance:** Network-level interception guarantees compliance. Agents cannot bypass the budget check, ensuring the business is protected from runaway costs.
+* **Forensic Preservation:** In the event of budget exhaustion, the sidecar drops the outbound network packet (returning HTTP 429) but leaves the AI Agent pod running. This preserves local memory and trace spans for root-cause analysis.
+
+## Consequences (Trade-offs)
+* **Positive:** Complete decoupling of business logic from governance. Security teams can update fiscal policies without AI teams redeploying code.
+* **Negative:** Introduces a minor latency penalty (2-5ms) to every outbound LLM request due to the extra localhost network hop. 
+
+## Future Considerations (Deferred Decisions)
+* As the cluster scales beyond 500+ agentic pods, the resource overhead of running a sidecar in every pod may become inefficient. At that scale, we will defer the decision to evaluate eBPF (Sidecarless) mesh technologies like Cilium to push these network policies directly to the Linux kernel level.
+# ADR 002: Atomic State Management for Budget Concurrency
+
+**Date:** 2026-06-05
+**Status:** Accepted
+**Primary Business Driver:** Prevent fiscal overspend (Race Conditions) during high-concurrency AI inference spikes.
+
+## Context
+The Serverless Agentic Governance Controller (SAGC) acts as the fiscal circuit breaker for autonomous AI agents. In a production environment, an agentic workload may horizontally scale to dozens of concurrent pods. 
+
+If multiple pods attempt to deduct tokens from the same `Workload Identity` budget simultaneously, a standard "Read-Modify-Write" pattern will result in a Race Condition. Multiple requests will read the same remaining balance before the database is updated, causing the system to authorize requests that collectively exceed the hard budget cap.
+
+## Decision
+We will reject standard relational database updates (e.g., SQL `UPDATE` with row locks) and in-memory state tracking. Instead, the SAGC will rely exclusively on a centralized, highly-available key-value store (e.g., Redis) utilizing **Atomic Decrement Operations** (e.g., `DECRBY`) or a NoSQL datastore (e.g., DynamoDB/Firestore) utilizing **Optimistic Concurrency Control (OCC)**.
+
+## Considered Alternatives
+1.  **In-Memory State (Rejected):** Tracking the budget in the RAM of the SAGC sidecar. *Why rejected:* State is lost if the pod restarts. More importantly, budget state cannot be shared across multiple horizontal replicas of the agent, rendering global budget caps impossible.
+2.  **Relational SQL DB with Pessimistic Locking (Rejected):** Using `SELECT ... FOR UPDATE` to lock the budget row until the transaction completes. *Why rejected:* Pessimistic locking introduces unacceptable latency. If 50 agents hit the database, 49 must wait in a queue, causing cascading timeouts in the inference pipeline.
+
+## Rationale
+* **Atomic Precision:** An atomic operation (like Redis `DECRBY`) ensures that reading the current budget and deducting the new token count happens as a single, indivisible computational step. It is mathematically impossible for two concurrent network requests to read the same stale state.
+* **Low Latency:** Distributed key-value stores optimized for atomic operations provide sub-millisecond response times, ensuring the fiscal check does not degrade the application's overall performance SLA.
+
+## Consequences (Trade-offs)
+* **Positive:** Complete elimination of race-condition-induced overspending. The fiscal boundary is mathematically guaranteed regardless of cluster scale.
+* **Negative:** Introduces a strict infrastructure dependency on a highly-available centralized cache/state-store. If the centralized state store experiences an outage, the SAGC defaults to `Fail-Closed`, potentially causing a system-wide denial of service for outbound AI requests.
+
+## Future Considerations (Deferred Decisions)
+* To mitigate the risk of the centralized state store becoming a single point of failure (SPOF), future iterations may implement a "Local Token Bucket" architecture. In this model, the centralized store allocates "chunks" of the budget (e.g., $5.00 blocks) to the local SAGC sidecars periodically, allowing them to perform local atomic deductions and survive temporary network partitions from the main database.
+# ADR 003: Remote State Management via GCS Backend
+
+**Date:** 2026-06-05
+**Status:** Approved
+**Context:** The deployment architecture for the `serverless-agentic-governance-controller` ecosystem requires decoupling the infrastructure state from transient local container runtimes (e.g., GitHub Codespaces). Storing state locally introduces single points of failure, concurrency race conditions, and completely blocks CI/CD capability for infrastructure automation.
+
+**Decision:** We mandate migrating the Terraform state storage mechanism from the standard local file state driver to a remote, highly available **Google Cloud Storage (GCS)** backend.
+
+### Architecture
+* **State Sync:** Terraform CLI (Local/CI) communicates with the GCS State Bucket via TLS 1.3.
+* **Storage:** Encrypted and locked GCS bucket specifically dedicated to state management.
+
+### Consequences & Guardrails
+1.  **State Locking:** GCS natively handles lock operations via object holds, preventing corruption from concurrent execution runs across distributed operations teams or automated pipelines.
+2.  **Access Control:** Access to infrastructure state secrets is completely decoupled from repository read permissions, restricted strictly via granular Cloud IAM controls.
+3.  **Operational Readiness:** This structural change satisfies the prerequisites for migrating to an automated pipeline execution model (GitOps) via GitHub Actions runner workloads.
+# ADR 004: GitOps Terraform Pipeline Execution and Governance
+
+**Date:** 2026-06-05
+**Status:** Approved
+**Context:** Following the migration of our infrastructure state to a secure GCS backend (ADR 003), the execution phase of our Terraform deployments remains tied to localized, manual terminal environments. This represents a single point of failure, introduces configuration drift, and bypasses the audit and compliance requirements necessary for regulatory-grade incident investigations and strict Fiscal SecOps.
+
+**Decision:** We mandate the deprecation of local `terraform apply` executions. All infrastructure mutations will be handled exclusively by an automated GitOps pipeline via GitHub Actions, serving as the single source of truth for the platform state.
+
+### Business & Operational Justification
+* **Auditable Velocity:** The version control system becomes an immutable audit log. Every infrastructure change is tracked by author, reviewer, timestamp, and pipeline execution output.
+* **Peer Enablement:** The barrier to entry for platform contribution is minimized. Peers do not require local Terraform installations or highly privileged GCP credentials; they only need to submit a Pull Request.
+* **Fiscal SecOps:** Manual terminal execution is the leading cause of anomalous cloud spend. Gating deployments behind a peer-reviewed automation pipeline systematically reduces catastrophic provisioning errors.
+
+### Trade-Offs
+* Intentional friction introduced into the iteration loop (waiting for CI runners vs. instant local feedback).
+* Overhead required to maintain the CI/CD YAML definitions.
+* Troubleshooting moves from local CLI context to remote CI pipeline logs.
+
+### Security & Compliance Guardrails
+
+**1. Blast Radius Containment**
+The pipeline will authenticate via Workload Identity Federation (WIF). The WIF service account is strictly scoped via IAM to the specific target project and GKE cluster boundaries, explicitly denying lateral movement across the broader GCP organization.
+
+**2. Disaster Recovery & Emergency Intervention**
+* **Standard Rollback:** Revert the offending Pull Request in GitHub and allow the pipeline to automatically reconcile the state.
+* **Break-Glass Protocol:** In the event of a pipeline failure during a Sev-1 outage, designated personnel may use Privileged Access Manager (PAM) or Vault to temporarily access the GCP UI/CLI. All UI mutations must be backported into the Terraform code during the mandatory incident post-mortem to resolve drift.
+
+**3. Separation of Duties (SoD)**
+Branch protection rules are enforced on the `main` branch. A minimum of one approving review from a peer is required before merge. The author of the code cannot unilaterally execute the pipeline, mathematically enforcing SoD for regulatory compliance.
+
+**4. Policy-as-Code Pre-Flight Checks**
+To guarantee Fiscal SecOps and security boundaries are respected, the Pull Request stage will integrate automated tooling (e.g., `tfsec` for vulnerability scanning and `Infracost` for budget analysis). The PR will automatically fail validation if the code violates established cost-center or security policies before reaching the execution phase.# ADR 005: Policy-as-Code and Automated Pre-Flight Checks
+
+**Date:** 2026-06-05
+**Status:** Approved
+**Context:** Following the establishment of our automated GitOps pipeline (ADR 004), we must ensure that all infrastructure mutations comply with organizational security standards, Fiscal SecOps boundaries, and provider best practices *before* reaching the `terraform plan` or `apply` phases. Relying solely on manual peer review for complex HCL syntax and security vulnerabilities introduces unacceptable human error and operational bottlenecks.
+
+**Decision:** We mandate the integration of a dual-layered, automated pre-flight gating system within the GitOps pipeline:
+1. **TFLint:** For infrastructure syntax, deprecated instance type detection, and cloud-provider best practices.
+2. **tfsec:** For static security analysis, ensuring resources are not provisioned with known vulnerabilities or compliance violations (e.g., unencrypted buckets, open firewalls).
+
+### Consequences & Guardrails
+* **Shift-Left Security:** Vulnerabilities and bad practices will hard-fail the CI/CD pipeline immediately, explicitly blocking the Pull Request from being merged.
+* **Operational Empathy:** Reviewers are freed from auditing syntax and basic security checklists, allowing them to focus strictly on architectural logic and business intent.
+* **Standardization:** Future maintainers inherit a system that automatically enforces its own coding and security standards, preventing architectural degradation over time.# ADR-006: Observability-as-Code and Telemetry Standard
+
+## Status
+Accepted
+
+## Context
+The Serverless Agentic Governance Controller (SAGC) enforces critical fiscal boundaries. Operational transparency into its decision-making (e.g., token burn rates, OPA evaluation latency, circuit breaker trips) is required for FinOps and SRE teams. Manually configuring dashboards creates operational toil and configuration drift across environments.
+
+## Decision
+We will implement an "Observability-as-Code" standard using the Prometheus/Grafana stack:
+1. **Prometheus ServiceMonitor:** A declarative Kubernetes custom resource will automatically discover and scrape the SAGC `/metrics` endpoint.
+2. **Grafana Dashboards:** Visualizations will be stored as JSON artifacts in the repository and provisioned dynamically via Grafana provisioning sidecars or GitOps (ArgoCD).
+
+## Consequences
+* **Positive:** Instant operational visibility upon deployment. Dashboards are version-controlled and undergo the same PR review process as application code.
+* **Negative:** Introduces a dependency on the Prometheus Operator being present in the target Kubernetes cluster for the `ServiceMonitor` to function.
+
+## FinOps Telemetry Philosophy (Amendment to ADR 006)
+To prevent alert fatigue and ensure systemic understanding, we adopt a "Dollar-Aware Observability" posture:
+* **Metric-First:** We avoid high-cardinality log-streaming for routine blocks. We aggregate at the Envoy edge via Prometheus counters.
+* **Causal Linking:** All alerts must point to the specific business value being protected (e.g., "Budget Guardrail Tripped = $X saved from potential runaway loop").
+* **Cognitive Load:** Dashboards must include "Runbook Context" fields. Any engineer on-call should be able to look at a Grafana panel and see the exact ADR and policy logic that generated that metric.# ADR 007: Two-Tiered OPA Governance for Agentic Workloads
+
+## Status
+Accepted
+
+## Context & Problem
+Autonomous AI agents present two distinct fiscal risks:
+1. **Infrastructure Sprawl:** Unlabeled or unauthorized pods scaling up and consuming excessive compute resources (CPU/RAM).
+2. **Token Burn:** Legitimate pods executing recursive loops and consuming excessive external LLM tokens ($/token).
+
+A single governance layer cannot effectively mitigate both risks. 
+
+## Decision
+Building upon the sidecar proxy interception established in **ADR 001**, we will implement a **Two-Tiered Policy-as-Code Governance Architecture**.
+
+### Tier 1: Cluster Admission (Control Plane)
+* **Tool:** Kyverno / OPA Gatekeeper
+* **Path:** `k8s/policies/admission/`
+* **Mechanism:** Validates Kubernetes manifests during the `Mutating/ValidatingWebhookConfiguration` phase. 
+* **Rule:** No pod is allowed to schedule in the `agentic` namespace unless it passes static fiscal checks (e.g., required cost-center labels, requested resource limits).
+
+### Tier 2: Network Authorization (Data Plane)
+* **Tool:** OPA Envoy Sidecar
+* **Path:** `k8s/policies/sidecar/`
+* **Mechanism:** Validates live Layer 7 outbound HTTP traffic.
+* **Rule:** Intercepts all egress traffic to LLM endpoints and evaluates atomic budget states. If the token budget is exhausted, it drops the packet and returns an `HTTP 429 Too Many Requests` (preserving local memory state) before the request reaches the public internet.
+
+## Consequences
+* **Positive:** Deep defense-in-depth. Infrastructure costs are capped at deployment; token costs are capped at runtime.
+* **Positive:** Clear separation of concerns. Platform Engineers manage Tier 1 (Admission); SRE/AppSec manages Tier 2 (Sidecar).
+* **Negative:** Increased cognitive load for engineers debugging denied requests (requires checking both Admission logs and Envoy sidecar logs).# ADR 008: Continuous Chaos Engineering for Fiscal Guardrails
+
+## Status
+Accepted
+
+## Context & Problem
+Traditional unit tests mock external dependencies, ensuring code logic is correct but ignoring systemic network behavior. In an active-passive multi-cloud environment, a race condition in the OPA sidecar or database layer could allow an agent to bypass the budget limit if 50 concurrent threads request execution simultaneously.
+
+## Decision
+We will mandate **Continuous Chaos Engineering** as an absolute deployment gate. The `make test-chaos` suite utilizes highly concurrent thread pools (`concurrent.futures`) to aggressively bombard the Envoy egress proxy.
+
+* **Assertion:** The pipeline is only marked 'Green' if the proxy successfully intercepts the traffic and returns an `HTTP 429` under load.
+* **Execution:** This test runs against ephemerally provisioned infrastructure mimicking the production GKE Autopilot environment.
+
+## Consequences
+* **Positive:** Mathematically proves our atomic state concurrency (ADR 002) holds up under live network saturation.
+* **Positive:** Prevents regressions where a misconfigured Envoy filter accidentally allows traffic to bypass OPA.
+* **Negative:** CI/CD pipeline execution time increases slightly due to deliberate network stress testing.
+# ADR 009: Layer 7 Interception via Envoy Ext_Authz
+
+## Status
+Accepted
+
+## Context & Problem
+We possess OPA Rego policies (ADR 007) capable of enforcing fiscal budgets. However, AI agents written in different languages (Python, Node, Go) construct outbound HTTP calls differently. Relying on application-level routing to reach OPA introduces bypass risks.
+
+## Decision
+We will manipulate the data plane directly using an **EnvoyFilter**. 
+We inject the `envoy.filters.http.ext_authz` filter into the `SIDECAR_OUTBOUND` context. Every outbound L7 request is paused and evaluated against the local OPA sidecar (`localhost:9191`) via a gRPC handshake before routing to the internet.
+
+## Consequences
+* **Positive:** Complete language agnosticism. Developers cannot bypass the proxy.
+* **Positive (Fail-Closed):** Configured `failure_mode_allow: false`. If the OPA sidecar crashes or the 250ms timeout is breached, Envoy drops the traffic. The business is protected from infrastructure faults.
+* **Negative:** Adds up to 250ms of maximum latency to outbound LLM requests (acceptable tradeoff for asynchronous AI workloads).
+# ADR 010: CI/CD Security & Policy Gates
+
+## Status
+Accepted
+
+## Decision
+The CI/CD pipeline is promoted to an authoritative **Security Gate**. No infrastructure or governance policy can be merged without passing:
+1. **Rego Linting:** Syntactic validation of governance logic.
+2. **Kube-Linter:** Enforcement of Pod Security Standards (no root, read-only FS).
+3. **Policy Simulation:** Automated simulation of denial events to ensure Rego changes don't inadvertently "fail-open."
+
+## Rationale
+"Shifting left" on governance ensures that the SRE team never has to debug policy syntax errors in production. The pipeline is the first line of defense against both human error and malicious intent.
+# ADR 011: Global Fencing for Active-Passive Failover
+
+## Decision
+We implement a distributed Redis lease (Redlock) as the "Source of Truth" for region-wide authorization. 
+
+## Rationale
+Prevents budget collision during multi-cloud failover events where split-brain state could lead to OpEx double-spend.
+
+## Fencing Policy
+All `sagc` ingress/egress is gated by the `is_primary_environment` policy check.
+# ADR 012: Transition to Sidecarless Governance (eBPF/Cilium)
+
+## Status
+Deferred
+
+## Context
+At 500+ agentic pods, the cumulative memory/CPU overhead of sidecar proxies (Envoy + OPA) in every pod introduces significant node-density tax. 
+
+## Decision
+We will transition to an **eBPF-based governance model** using Cilium.
+* The budget check logic (Rego) will be compiled into eBPF bytecode.
+* The Cilium Agent will enforce the budget check directly in the Linux Kernel, bypassing user-space network hops entirely.
+
+## Consequences
+* **Positive:** Near-zero overhead for policy enforcement; drastic reduction in memory footprint per pod.
+* **Negative:** Increased complexity in debugging kernel-space logic; requires specialized Cilium/eBPF operational skills.
+# ADR 013: Vault-Native & Workload Identity Shift
+
+## Status
+Accepted
+
+## Context
+Following the identification of static service account keys in the repository, we are moving to a "Zero-Secret-in-Git" architecture.
+
+## Decision
+1. **Workload Identity:** We will migrate all infrastructure provisioning (Terraform) and application workloads to use Google Cloud Workload Identity. This binds Kubernetes Service Accounts to IAM roles, eliminating the need for static `key.json` files.
+2. **External Secrets:** Non-GCP secrets (e.g., Database URLs, API keys) will be fetched at runtime via the `external-secrets-operator` from HashiCorp Vault.
+3. **Prevention:** We add `gitleaks` as a mandatory pre-commit hook to block any future commits containing sensitive key patterns.
+
+## Consequences
+* **Positive:** Credentials are ephemeral and never stored in version control; attack surface is reduced to zero for static keys.
+* **Negative:** Requires initial configuration overhead to bind KSA identities to IAM roles.
+# ADR 014: Immutable Audit Log Integrity
+
+## Status
+Accepted
+
+## Context
+To achieve regulatory compliance (SOC2/GDPR) and provide forensic readiness, our audit logs must be immune to tampering, even by an administrative user.
+
+## Decision
+We automate the creation of the WORM (Write-Once-Read-Many) audit sink using Terraform.
+1. Logs are routed to a GCS bucket with a 365-day retention policy.
+2. The retention policy will be "Locked" via Terraform after the initial deployment phase to ensure non-repudiation.
+3. This configuration is version-controlled and immutable, preventing configuration drift.
+
+## Consequences
+* **Positive:** Ensures forensic integrity; meets the most stringent audit requirements for "non-repudiation."
+* **Negative:** Requires strict management of the storage bucket, as it cannot be deleted until the retention period expires.# ADR 015: Default-Deny Egress Architecture
+
+## Status
+Accepted
+
+## Context
+Autonomous AI agents are highly susceptible to prompt injection. If an agent is compromised, it may attempt to exfiltrate data or establish command-and-control (C2) connections to unauthorized external domains. Kubernetes defaults to allowing all egress traffic.
+
+## Decision
+We implement a **Zero-Trust Default-Deny Egress Network Policy** across the workload namespace.
+1. All outbound traffic from agent pods is dropped at the network layer.
+2. Egress is explicitly allowed *only* to the internal SAGC API Gateway.
+3. The API Gateway is explicitly allowed to egress *only* to approved LLM provider endpoints (e.g., OpenAI, Anthropic, GCP Vertex) via FQDN/IP whitelisting.
+
+## Consequences
+* **Positive:** Mathematically prevents unauthorized data exfiltration and "Shadow IT" external API calls.
+* **Negative:** Adding new external tools or APIs requires an infrastructure code change to update the allowed egress list.
+# ADR 016: Zero-Trust Ingress via Cloud IAP
+
+## Status
+Accepted
+
+## Context
+Exposing the SAGC API Gateway directly to the public internet invites DDoS attacks and unauthenticated probing, wasting GKE compute resources.
+
+## Decision
+We implement a Zero-Trust ingress architecture using Google Cloud Identity-Aware Proxy (IAP) via a GKE `BackendConfig`. Traffic is authenticated cryptographically at the Google Edge before routing to the VPC.
+# ADR 017: Spend Velocity Rate Limiting (Token Bucket)
+
+## Decision
+We utilize a Redis-backed Token Bucket algorithm (via atomic Lua scripting) to enforce a requests-per-minute velocity limit on all autonomous agents, preventing instantaneous budget depletion during infinite loops.
+# ADR 018: Supply Chain Security via Container Image Signing
+
+## Status
+Accepted
+
+## Context
+Malicious actors frequently target CI/CD pipelines or container registries to inject compromised code into production workloads. If an attacker gains access to our Google Artifact Registry, they could overwrite or upload a poisoned container image that bypasses standard deployment checks.
+
+## Decision
+We enforce a strict cryptographic chain of custody for all production workloads:
+1. **Cosign Image Signing:** All Docker images built via GitHub Actions will be cryptographically signed using Cosign (Sigstore) before being pushed to Google Artifact Registry.
+2. **Binary Authorization:** We will enable Google Cloud Binary Authorization on our GKE Autopilot cluster.
+3. **Admission Enforcement:** GKE will utilize an evaluation policy that blocks the deployment of any pod if its container image lacks a valid signature from our trusted CI/CD public key.
+
+## Consequences
+* **Positive:** Complete protection against tampered images or unauthorized registry uploads; ensures only validated code executes.
+* **Negative:** Introduces key management complexity; pipeline disruptions (e.g., expired keys or failed signing steps) will cause immediate deployment blockages.
+# ADR 019: Continuous Disaster Recovery Validation (Chaos Engineering)
+
+## Status
+Accepted
+
+## Context
+Our active-passive multi-cloud architecture relies on a Redis-backed Global Fencing Lock (ADR 011) to prevent split-brain budget consumption. Failover mechanisms are notoriously prone to configuration drift and silent decay over time.
+
+## Decision
+We will implement an automated Chaos Engineering practice for our DR mechanisms:
+1. A Kubernetes `CronJob` (the "Chaos Monkey") will be deployed in our staging environments.
+2. On a scheduled cadence, it will intentionally delete the `global-primary-lock` or introduce network latency to the Redis state store.
+3. Our telemetry must confirm that the SAGC Envoy proxies instantly enter a "Fail-Closed" state, dropping all outbound LLM traffic until the lease is recovered or promoted to the passive region.
+
+## Consequences
+* **Positive:** Transforms DR from a theoretical binder of runbooks into a cryptographically verified, continuous metric.
+* **Negative:** Introduces intentional instability into staging environments; requires sophisticated synthetic monitoring to measure the success of the chaos experiments.
+# ADR 020: Dynamic FinOps Alerting (Anomaly Detection)
+
+## Status
+Accepted
+
+## Context
+While hard budget limits prevent fiscal ruin, unexpected spikes in token burn rates can exhaust an agent's monthly budget in minutes, causing premature denial of service. Relying solely on a $0 balance to detect anomalies is an anti-pattern.
+
+## Decision
+We implement proactive, dynamic alerting using Prometheus and Alertmanager.
+1. The API Gateway will emit custom Prometheus metrics tracking token consumption per agent (`sagc_token_spend_total`).
+2. We will deploy a `PrometheusRule` that calculates the 5-minute moving average of the burn rate.
+3. If the burn rate exceeds the predefined standard deviation for that specific agent profile, a High Priority alert is routed to the SRE team via Slack/PagerDuty.
+
+## Consequences
+* **Positive:** Shifts FinOps from a reactive "billing shock" model to a proactive "incident response" model.
+* **Negative:** Requires tuning alert thresholds to avoid alert fatigue from legitimate high-burst agent workloads.
+# ADR 021: Semantic Payload Inspection via Envoy Sidecar (DLP)
+
+## Status
+Accepted
+
+## Context
+If an internal agent inadvertently includes Personally Identifiable Information (PII) or restricted intellectual property in a prompt, that data will be transmitted to external providers, violating data privacy regulations. Relying on application-level logic to redact this data breaks the separation of concerns.
+
+## Decision
+We will implement Data Loss Prevention (DLP) natively within the Envoy Sidecar Proxy layer.
+1. A Microsoft Presidio NLP container will be deployed as a sidecar alongside the Envoy proxy in the SAGC Gateway pods.
+2. Envoy will utilize the `ext_proc` (External Processing) filter to stream all outbound HTTP request bodies to the local Presidio sidecar over a gRPC connection on `localhost`.
+3. Presidio will mutate the payload, redacting sensitive entities (e.g., replacing a name with `[REDACTED_PERSON]`) before returning the mutated body to Envoy for external routing.
+
+## Consequences
+* **Positive:** Strict separation of security from application logic; impossible for agents to bypass redaction; near-zero latency due to local memory communication.
+* **Negative:** Increases the memory footprint of the Gateway pods (requiring ~500MB additional RAM per pod to load the Presidio spaCy NLP models); requires complex Envoy filter configuration to safely parse dynamic LLM JSON schemas.
+# ADR 022: Unified AI Security Sidecar (DLP & Prompt Injection)
+
+## Status
+Accepted
+
+## Context
+Agentic workflows require protection against both data exfiltration (PII leakage) and semantic attacks (Prompt Injection/Jailbreaks). Implementing separate sidecars or inline API calls for each security check introduces unacceptable latency and architectural friction. 
+
+## Decision
+We implement a single, unified `ai-security-sidecar` deployed alongside the Envoy proxy in the SAGC Gateway pods.
+1. Envoy intercepts outbound LLM requests and streams the payload to the sidecar via the `ext_proc` gRPC filter over `localhost`.
+2. The sidecar executes a sequential semantic pipeline:
+   - **Step 1 (DLP):** Identifies and masks sensitive entities.
+   - **Step 2 (Threat Detection):** Evaluates the masked payload for adversarial prompt injection techniques.
+3. If an attack is detected, the sidecar instructs Envoy to drop the request and return an `HTTP 403`. Otherwise, it returns the mutated, clean payload for routing.
+
+## Consequences
+* **Positive:** Centralizes semantic governance; minimizes network latency by keeping inspections local; abstracts complex NLP/ML security logic away from the core proxy and agent applications.
+* **Negative:** Increases the CPU and memory footprint of the Gateway pod; the sidecar becomes a critical failure point (requires fail-closed logic if the sidecar crashes).
+# ADR 023: Security Sidecar Inference Engines
+
+## Status
+Accepted
+
+## Context
+ADR 022 established the architectural pattern of a Unified AI Security Sidecar. We must now define the specific evaluation engines utilized within that sidecar to balance latency, operational cost, and security efficacy.
+
+## Decision
+We select the following engines for local sidecar evaluation:
+1. **DLP Engine:** Microsoft Presidio. We favor its hybrid approach (Regex + spaCy NLP) to drastically reduce false positives compared to pure regex, accepting the ~500MB memory overhead.
+2. **Threat Detection Engine:** Local Quantized ML Model (e.g., `deberta-v3` via ONNX). We explicitly reject external API-based threat detection to prevent double network latency, avoid third-party API costs, and maintain strict data sovereignty over our raw prompts.
+
+## Consequences
+* **Positive:** Achieves near-zero network latency for critical security checks; eliminates recurring API costs for security scanning; ensures raw payloads do not leave the VPC for governance evaluation.
+* **Negative:** The GKE Autopilot pods will require significantly higher memory requests to load both the Presidio NLP models and the ONNX threat models into local RAM.
+# ADR 024: Internal Mutual TLS (mTLS) Mesh Infrastructure
+
+## Status
+Accepted
+
+## Context
+While external ingress and egress boundaries are hardened, internal service-to-service communication between autonomous agents and the SAGC Gateway occurs over cleartext HTTP. If a single workload inside the cluster is compromised, an attacker could intercept raw prompts, context windows, and API responses.
+
+## Decision
+We enforce strict cryptographic identity and mutual TLS (mTLS) for all internal pod-to-pod communication.
+1. We will leverage a Kubernetes Service Mesh (such as Istio or Google Anthos Service Mesh) to manage service identities via short-lived SPIFFE x509 certificates.
+2. We will deploy a mesh-wide `PeerAuthentication` policy configured in `STRICT` mode for the namespaces running our agentic workloads and the SAGC gateway.
+3. Any unencrypted cleartext connection or connection with an unverified SPIFFE identity will be dropped immediately at the pod network boundary by the Envoy proxy sidecar.
+
+## Consequences
+* **Positive:** Complete cryptographic protection for internal prompt transit; satisfies strict data-in-transit regulatory mandates without altering agent application code.
+* **Negative:** Introduces minimal sidecar proxy CPU/memory overhead for mutual cryptographic handshakes; requires careful tracking of non-mesh cluster components (like core Kubernetes DNS or monitoring metrics scrapers) to prevent communication breakage.
+# ADR 025: eBPF Container Runtime Threat Detection
+
+## Status
+Accepted
+
+## Context
+Supply chain controls (Binary Authorization) secure the deployment pipeline, but cannot prevent post-exploitation activities if a zero-day vulnerability allows Remote Code Execution (RCE) within a running container.
+
+## Decision
+We implement eBPF-based container runtime security monitoring (e.g., CNCF Falco) across the GKE Autopilot clusters.
+1. eBPF probes will attach to the Linux kernel to monitor all system calls generated by the `litellm` and `ai-security-sidecar` containers.
+2. Strict behavioral baselines will be enforced via declarative rules.
+3. If a container exhibits anomalous behavior—such as spawning an interactive shell (`execve`), writing to unexpected directories, or executing outbound network connections not routed through Envoy—an immediate `CRITICAL` alert will be fired to the SRE/SecOps incident response pipeline.
+
+## Consequences
+* **Positive:** Provides deep, real-time forensic visibility into container behavior; catches zero-day exploits and fileless malware that bypass static network filters.
+* **Negative:** eBPF rule tuning is complex; poorly defined baselines can result in severe alert fatigue for the on-call SRE team.
+# ADR 026: Zero Standing Privileges and Just-In-Time (JIT) Access
+
+## Status
+Accepted
+
+## Context
+While the workload identities and network perimeters are heavily restricted, human administrators currently possess standing, highly privileged roles (e.g., `cluster-admin`, `roles/owner`). Compromise of an administrator's workstation would grant an attacker unrestricted ability to bypass all SAGC fiscal and security guardrails.
+
+## Decision
+We mandate Zero Standing Privileges (ZSP) for all human operators interacting with the production environment.
+1. All persistent, highly privileged IAM roles assigned to human user accounts will be revoked.
+2. We will implement a Just-In-Time (JIT) access broker (e.g., Google Cloud Privileged Access Manager or HashiCorp Boundary).
+3. Engineers requiring production access must request a time-bound, cryptographically signed token (max duration: 2 hours) accompanied by a valid Jira/ITSM ticket number.
+4. "Break-glass" emergency access will automatically trigger a PagerDuty alert to the security team and initiate heightened audit logging.
+
+## Consequences
+* **Positive:** Drastically reduces the blast radius of credential theft; ensures human access is ephemeral, audited, and tied to documented change management.
+* **Negative:** Introduces friction to the developer experience; requires SREs to authenticate through an access broker during high-stress incident response scenarios.
+# ADR 027: Automated Upstream API Key Rotation
+
+## Status
+Accepted
+
+## Context
+The SAGC Gateway authenticates with external LLM providers (e.g., OpenAI, Anthropic) using static API keys stored in GCP Secret Manager. Long-lived static credentials represent a severe supply chain and fiscal risk if exposed.
+
+## Decision
+We enforce cryptographic agility for all external LLM provider credentials via an automated rotation pipeline.
+1. A secure, scheduled runner (e.g., a Cloud Run job triggered via Cloud Scheduler) will execute a key rotation script every 30 days.
+2. The runner will authenticate to the upstream LLM provider's management API, generate a new API key, and write the new key to GCP Secret Manager as a new version.
+3. The runner will then trigger a rolling restart of the SAGC Gateway Kubernetes deployment to ensure all Envoy/LiteLLM pods load the fresh credential.
+4. The runner will explicitly revoke the old API key via the provider's API after a 24-hour grace period to ensure no inflight requests are dropped.
+
+## Consequences
+* **Positive:** Drastically limits the exposure window of a compromised downstream credential; eliminates manual toil associated with secret rotation.
+* **Negative:** Introduces complex orchestration logic; provider API outages during the rotation window could temporarily block the issuance of new keys.
+# ADR 028: Immutable State Backups (Point-In-Time Recovery)
+
+## Status
+Accepted
+
+## Context
+The SAGC architecture relies on a distributed Redis state store for real-time token budgeting and velocity rate limiting. If this state is corrupted, deleted, or encrypted via ransomware, the governance controller loses its fiscal tracking capability, resulting in either unbounded spend or a complete fleet outage.
+
+## Decision
+We implement Point-In-Time Recovery (PITR) utilizing immutable external storage.
+1. Redis will be configured to generate continuous Append-Only File (AOF) streams and hourly RDB snapshots.
+2. A sidecar backup agent (e.g., Wal-G or a custom cron container) will continuously ship these artifacts to a dedicated Google Cloud Storage bucket.
+3. This backup bucket will reside in a heavily isolated, dedicated "Backup/Archive" GCP project.
+4. The bucket will have Object Lock (WORM) enabled with a 30-day retention policy, ensuring that even a compromised `roles/owner` in the primary production project cannot delete or alter the backups.
+
+## Consequences
+* **Positive:** Guarantees a near-zero Recovery Point Objective (RPO) and protects against catastrophic administrative error or ransomware targeting the state store.
+* **Negative:** Increases storage costs and introduces minor disk I/O overhead on the Redis primary node to process and ship the continuous AOF streams.
+# ADR 029: Enterprise Identity Federation (SAML/OIDC)
+
+## Status
+Accepted
+
+## Context
+Currently, access to the SAGC environment (via Cloud IAP or Kubernetes RBAC) relies on isolated Google Cloud identities. This creates a fragmented identity perimeter that is disconnected from the enterprise HR lifecycle (onboarding, role changes, terminations), risking lingering access for offboarded personnel.
+
+## Decision
+We mandate Enterprise Identity Federation for all human interaction with the system.
+1. Google Cloud Identity will be federated with the corporate Identity Provider (IdP) — such as Okta or Azure AD — using SAML 2.0 or OIDC.
+2. Direct user-level IAM bindings in GCP will be strictly prohibited. All access must be granted via IdP-managed groups (e.g., `SAGC-Admins`, `SAGC-Viewers`).
+3. Kubernetes Role-Based Access Control (RBAC) will utilize OIDC tokens issued by the central IdP, mapping cluster permissions directly to corporate group claims.
+
+## Consequences
+* **Positive:** Ensures compliance with automated offboarding requirements; centralized audit logging for all authentication events; enforces corporate MFA policies globally.
+* **Negative:** Creates a hard dependency on the external IdP; an outage in Okta/Azure AD will completely lock out all human administrators from the GCP environment and GKE clusters.
+# ADR 030: Continuous Compliance Posture Management (CSPM)
+
+## Status
+Accepted
+
+## Context
+Validating regulatory compliance (SOC2, ISO27001) manually is highly inefficient and creates significant "compliance drift" blind spots between formal audit cycles. The organization requires mathematically verifiable, real-time proof that our implemented architectural guardrails (WORM storage, default-deny egress, Identity Federation) remain active and uncompromised.
+
+## Decision
+We will implement a Continuous Compliance Posture Management (CSPM) platform (e.g., Google Cloud Security Command Center Premium or a third-party equivalent like Wiz/Prisma Cloud).
+1. The CSPM will continuously ingest telemetry, IAM policies, and configuration states from the GCP Organization and GKE Autopilot clusters.
+2. It will automatically map these live configurations to standardized compliance frameworks (e.g., NIST 800-53, SOC2 Type II).
+3. Any configuration drift (e.g., a bucket losing its WORM lock, or an IAM binding bypassing the IdP) will trigger an immediate high-priority alert to the FinOps/SecOps pipeline.
+4. The CSPM dashboard will serve as the primary, read-only system of record for external auditors to gather evidence.
+
+## Consequences
+* **Positive:** Automates audit evidence gathering; prevents silent compliance drift; provides real-time visibility into the infrastructure's regulatory posture.
+* **Negative:** Enterprise CSPM tools introduce substantial licensing costs; requires aggressive baseline tuning to prevent false-positive alert fatigue for the SRE team.
+# Architecture Decision Records (ADRs)
+
+This directory contains the historical record of structural and fiscal decisions made for the `serverless-agentic-governance-controller` platform. 
+
+## ADR Categorization Standard
+When submitting a new ADR for review, it must adhere to one of the following two scopes:
+
+1.  **CTO-Level ADRs (Technical Architecture)**
+    * **Focus:** Business Alignment, Velocity, and Technical Risk mitigation.
+    * **Example:** Deciding between Terraform vs. Pulumi for infrastructure provisioning based on team velocity and state management risk.
+2.  **Accounting/Fiscal ADRs (Fiscal SecOps)**
+    * **Focus:** Cost attribution, unit economics, and governance thresholds.
+    * **Example:** Defining the maximum allowable token-burn rate for an AI agent before triggering an automated circuit breaker.
+package sagc.authz
+
+import rego.v1
+import input.attributes.request.http as http_request
+
+default allow := false
+
+allow if {
+    is_post_request
+    is_llm_endpoint
+    has_valid_agent_id
+    budget_sufficient
+}
+
+is_post_request if {
+    http_request.method == "POST"
+}
+
+is_llm_endpoint if {
+    startswith(http_request.path, "/v1/chat/completions")
+}
+
+has_valid_agent_id if {
+    http_request.headers["x-internal-agent-id"] != ""
+}
+
+budget_sufficient if {
+    agent_id := http_request.headers["x-internal-agent-id"]
+    current_balance := data.budgets[agent_id].remaining_tokens
+    current_balance > 0
+}
+
+envoy_response := response if {
+    not allow
+    not budget_sufficient
+    has_valid_agent_id
+
+    response := {
+        "allowed": false,
+        "http_status": 429,
+        "body": "{\"error\": \"SAGC Guardrail Triggered: Token Burn Rate limit exceeded. Traffic dropped at network layer.\"}",
+        "headers": {
+            "Content-Type": "application/json",
+            "x-sagc-enforcement": "opa-sidecar"
+        }
+    }
+}
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default-strict-mtls
+  namespace: litellm
+spec:
+  # Enforce that all workloads in this namespace MUST use mTLS
+  # ARCHITECTURAL NOTE: STRICT mode blocks cleartext. 
+  # You MUST configure port-level exclusions (e.g., port 9090) 
+  # or add your metrics scraper to the mesh to prevent Prometheus/health-probe outages.
+  mtls:
+    mode: STRICT
+apiVersion: binaryauthorization.googleapis.com/v1
+kind: Policy
+description: Enforce Cosign signature verification for SAGC production workloads
+globalPolicyEvaluationMode: ENABLE
+defaultAdmissionRule:
+  evaluationMode: CHECK_ATTESTATION
+  enforcementMode: ENFORCE_BLOCK_AND_AUDIT_LOG
+  requireAttestationsBy:
+    - name: projects/alert-hall-466720-c0/attestors/cicd-cosign-attestor
+clusterAdmissionRules:
+  us-central1.sagc-gke-cluster:
+    evaluationMode: CHECK_ATTESTATION
+    enforcementMode: ENFORCE_BLOCK_AND_AUDIT_LOG
+    requireAttestationsBy:
+      - name: projects/alert-hall-466720-c0/attestors/cicd-cosign-attestor
+customRules:
+  falco_rules.local.yaml: |-
+    - rule: Terminal Shell in SAGC Container
+      desc: Detects an attempt to spawn an interactive shell inside the governance proxy container. This is a severe indicator of compromise (RCE).
+      condition: >
+        spawned_process and container
+        and container.image.repository contains "agentic-proxy-repo"
+        and proc.name in (shell_binaries)
+      output: >
+        CRITICAL: Shell spawned in SAGC proxy container! 
+        (user=%user.name container_id=%container.id image=%container.image.repository shell=%proc.name cmdline=%proc.cmdline)
+      priority: CRITICAL
+      tags: [container, mitre_execution, pci, incident_response]

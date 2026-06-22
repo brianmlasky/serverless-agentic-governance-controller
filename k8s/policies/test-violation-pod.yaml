@@ -6,5 +6,5 @@ metadata:
 spec:
   containers:
     - name: hungry-container
-      image: nginx:latest
+      image: nginx:v1.0.0
       # Deliberately missing the 'resources' block to trigger the fiscal limit violation

@@ -21,38 +21,38 @@ spec:
     spec:
       serviceAccountName: api-gateway-sa
       containers:
-      - name: api-gateway
-        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/agentic-platform/api-gateway:v2.1.0-6130474
-        command: ["uvicorn"]
-        args: ["main:app", "--host", "0.0.0.0", "--port", "4000"]
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: api-gateway-db-credentials-v2
-              key: DATABASE_URL
-        securityContext:
-          privileged: false
-          allowPrivilegeEscalation: false
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 4000
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 4000
-          initialDelaySeconds: 15
-          periodSeconds: 20
-      - name: cloud-sql-proxy
-        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.1
-        args:
-        - "--private-ip"
-        - "--address=127.0.0.1"
-        - "--max-connections=10"
-        - "alert-hall-466720-c0:us-central1:litellm-db"
-        securityContext:
-          privileged: false
-          allowPrivilegeEscalation: false
+        - name: api-gateway
+          image: us-central1-docker.pkg.dev/alert-hall-466720-c0/agentic-platform/api-gateway:v2.1.0-6130474
+          command: ["uvicorn"]
+          args: ["main:app", "--host", "0.0.0.0", "--port", "4000"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-gateway-db-credentials-v2
+                  key: DATABASE_URL
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.1
+          args:
+            - "--private-ip"
+            - "--address=127.0.0.1"
+            - "--max-connections=10"
+            - "alert-hall-466720-c0:us-central1:litellm-db"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false

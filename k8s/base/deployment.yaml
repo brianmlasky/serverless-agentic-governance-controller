@@ -17,7 +17,7 @@ spec:
       containers:
       - name: controller
         # This will be dynamically replaced by Kustomize/CI during deployment
-        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:latest
+        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:v1.0.0
         ports:
         - containerPort: 8080
         resources:

@@ -18,7 +18,7 @@ spec:
       containers:
         - name: controller
           # In a real CI/CD pipeline, this would be your Google Artifact Registry image path
-          image: sagc-controller:latest
+          image: sagc-controller:v1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
