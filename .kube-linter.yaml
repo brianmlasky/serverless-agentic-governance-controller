@@ -1,16 +1,8 @@
-# KubeLinter Configuration
-# This establishes a baseline for our existing manifests.
-# These checks are temporarily ignored to unblock CI/CD velocity.
-# They represent technical debt to be addressed in future hardening sprints.
 checks:
-  doNotRun:
-    - run-as-non-root
-    - no-read-only-root-fs
-    - latest-tag
-    - unset-cpu-requirements
-    - unset-memory-requirements
+  doNotAutoAddDefaults: false
+  ignore:
     - no-anti-affinity
-    - non-existent-service-account
     - dangling-service
-    - liveness-port
     - readiness-port
+    - liveness-port
+    - non-existent-service-account

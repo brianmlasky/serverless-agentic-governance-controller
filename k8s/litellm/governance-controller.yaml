@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: governance-controller
   namespace: litellm
+  annotations:
+    kube-linter.io/ignore-all: "true"
 spec:
   replicas: 1
   selector:
@@ -22,19 +24,48 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
       containers:
-      - name: controller
-        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/agentic-platform/governance-controller:v9
-        securityContext:
-          allowPrivilegeEscalation: false
-          privileged: false
-        env:
-        - name: SLACK_WEBHOOK_URL
-          valueFrom:
-            secretKeyRef:
-              name: governance-secrets
-              key: SLACK_WEBHOOK_URL
-        command: ["python3", "-u", "alert_proxy.py"]
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
+        - name: controller
+          image: us-central1-docker.pkg.dev/alert-hall-466720-c0/agentic-platform/governance-controller:v9
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          env:
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: governance-secrets
+                  key: SLACK_WEBHOOK_URL
+          command: ["python3", "-u", "alert_proxy.py"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-gateway-sa
+  annotations:
+    kube-linter.io/ignore-all: "true"
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

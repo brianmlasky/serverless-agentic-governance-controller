@@ -29,13 +29,38 @@ spec:
           # THIS IS REQUIRED BY YOUR OPA FISCAL POLICY
           resources:
             limits:
-              cpu: "1"
-              memory: "1Gi"
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: 100m
+              memory: 128Mi
           volumeMounts:
             - name: config-volume
               mountPath: /app/config.yaml
               subPath: config.yaml
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
       volumes:
         - name: config-volume
           configMap:
             name: litellm-config
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - sagc-workload
+                topologyKey: kubernetes.io/hostname
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

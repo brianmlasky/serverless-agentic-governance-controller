@@ -5,14 +5,23 @@ metadata:
   namespace: monitoring
 spec:
   groups:
-  - name: token-burn-anomalies
-    rules:
-    - alert: AnomalousTokenBurnRate
-      expr: rate(sagc_token_spend_total[5m]) > 500
-      for: 2m
-      labels:
-        severity: critical
-        team: sre-finops
-      annotations:
-        summary: "Agent {{ $labels.agent_id }} is burning tokens at an anomalous rate."
-        description: "The 5-minute burn rate velocity for agent {{ $labels.agent_id }} has exceeded 500 tokens/sec. Investigate for infinite loops or prompt injection."
+    - name: token-burn-anomalies
+      rules:
+        - alert: AnomalousTokenBurnRate
+          expr: rate(sagc_token_spend_total[5m]) > 500
+          for: 2m
+          labels:
+            severity: critical
+            team: sre-finops
+          annotations:
+            summary: "Agent {{ $labels.agent_id }} is burning tokens at an anomalous rate."
+            description: "The 5-minute burn rate velocity for agent {{ $labels.agent_id }} has exceeded 500 tokens/sec. Investigate for infinite loops or prompt injection."
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

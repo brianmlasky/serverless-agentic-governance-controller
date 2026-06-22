@@ -18,7 +18,7 @@ spec:
       containers:
         - name: controller
           # In a real CI/CD pipeline, this would be your Google Artifact Registry image path
-          image: sagc-controller:latest
+          image: sagc-controller:v1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -26,19 +26,17 @@ spec:
             # Dynamically route to the local LiteLLM service
             - name: LITELLM_PROXY_URL
               value: "http://litellm-service.agentic.svc.cluster.local:4000"
-          
           # ----------------------------------------------------
           # CRITICAL: FISCAL GUARDRAIL COMPLIANCE
           # This block ensures the pod passes your OPA Gatekeeper policy
           # ----------------------------------------------------
           resources:
             requests:
-              cpu: "250m"
-              memory: "256Mi"
+              cpu: "100m"
+              memory: "128Mi"
             limits:
               cpu: "500m"
               memory: "512Mi"
-          
           # Standard liveness probe pointing to the healthz endpoint we wrote in Python
           livenessProbe:
             httpGet:
@@ -46,3 +44,25 @@ spec:
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 15
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - sagc-workload
+                topologyKey: kubernetes.io/hostname
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

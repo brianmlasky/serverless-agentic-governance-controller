@@ -15,16 +15,26 @@ spec:
     spec:
       serviceAccountName: sagc-agent-sa # Binds the pod to the WIF identity
       containers:
-      - name: controller
-        # This will be dynamically replaced by Kustomize/CI during deployment
-        image: us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:latest
-        ports:
-        - containerPort: 8080
-        resources:
-          # Fiscal SecOps: Strict resource limits to prevent runaway compute costs
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "100m"
-            memory: "128Mi"
+        - name: controller
+          # This will be dynamically replaced by Kustomize/CI during deployment
+          image: us-central1-docker.pkg.dev/alert-hall-466720-c0/sagc-images/sagc-controller:v1.0.0
+          ports:
+            - containerPort: 8080
+          resources:
+            # Fiscal SecOps: Strict resource limits to prevent runaway compute costs
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

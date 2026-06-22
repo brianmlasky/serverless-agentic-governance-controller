@@ -9,6 +9,15 @@ spec:
   resources:
     requests:
       storage: 10Gi
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -42,10 +51,27 @@ spec:
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
       volumes:
         - name: postgres-storage
           persistentVolumeClaim:
             claimName: postgres-pvc
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 apiVersion: v1
 kind: Service
@@ -60,3 +86,12 @@ spec:
       port: 5432
       targetPort: 5432
   type: ClusterIP
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

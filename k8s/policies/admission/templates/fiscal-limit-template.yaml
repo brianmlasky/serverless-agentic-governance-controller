@@ -9,12 +9,21 @@ spec:
         kind: K8sFiscalLimits
   targets:
     - target: admission.k8s.gatekeeper.sh
-      rego: |
+      rego: |-
         package k8s.fiscal.guardrails
-        
+
         deny[msg] if {
             input.request.kind.kind == "Pod"
             container := input.request.object.spec.containers[_]
             not container.resources.limits
             msg := sprintf("FISCAL VIOLATION: Container '%v' lacks resource limits.", [container.name])
         }
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

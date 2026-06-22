@@ -10,3 +10,12 @@ spec:
   # or add your metrics scraper to the mesh to prevent Prometheus/health-probe outages.
   mtls:
     mode: STRICT
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

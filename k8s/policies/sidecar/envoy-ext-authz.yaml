@@ -10,27 +10,36 @@ spec:
     labels:
       workload-type: agentic-ai
   configPatches:
-  - applyTo: HTTP_FILTER
-    match:
-      context: SIDECAR_OUTBOUND # Intercept traffic leaving the pod
-      listener:
-        filterChain:
-          filter:
-            name: "envoy.filters.network.http_connection_manager"
-    patch:
-      operation: INSERT_BEFORE
-      value:
-        name: envoy.filters.http.ext_authz
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
-          # Point the network to the local OPA sidecar container on port 9191
-          grpc_service:
-            envoy_grpc:
-              cluster_name: outbound|9191||localhost
-            timeout: 0.25s # 250ms strict timeout for the budget lookup
-          transport_api_version: V3
-          # THE PRINCIPAL FLEX: If OPA crashes, drop the traffic.
-          failure_mode_allow: false
-          with_request_body:
-            max_request_bytes: 8192
-            allow_partial_message: true
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_OUTBOUND # Intercept traffic leaving the pod
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.ext_authz
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+            # Point the network to the local OPA sidecar container on port 9191
+            grpc_service:
+              envoy_grpc:
+                cluster_name: outbound|9191||localhost
+              timeout: 0.25s # 250ms strict timeout for the budget lookup
+            transport_api_version: V3
+            # THE PRINCIPAL FLEX: If OPA crashes, drop the traffic.
+            failure_mode_allow: false
+            with_request_body:
+              max_request_bytes: 8192
+              allow_partial_message: true
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

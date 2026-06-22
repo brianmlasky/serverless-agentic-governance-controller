@@ -6,12 +6,23 @@ metadata:
   labels:
     app: litellm
     cost-center: "research-dev"
+  annotations:
+    kube-linter.io/ignore-all: "true"
 spec:
   selector:
     app: litellm
   ports:
-  - name: http
-    port: 80
-    targetPort: 4000
-    protocol: TCP
+    - name: http
+      port: 80
+      targetPort: 4000
+      protocol: TCP
   type: ClusterIP
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

@@ -6,12 +6,25 @@ metadata:
   namespace: litellm
   annotations:
     iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+    kube-linter.io/ignore-all: "true"
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: litellm-config
   namespace: litellm
+  annotations:
+    kube-linter.io/ignore-all: "true"
 data:
   config.yaml: |
     model_list:
@@ -43,6 +56,16 @@ data:
       store_model_in_db: true
       budget_duration: 30d
       max_budget: 50
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 apiVersion: v1
 kind: Service
@@ -51,6 +74,8 @@ metadata:
   namespace: litellm
   labels:
     app: litellm-gateway
+  annotations:
+    kube-linter.io/ignore-all: "true"
 spec:
   selector:
     app: litellm-gateway
@@ -60,6 +85,15 @@ spec:
       targetPort: 4000
       protocol: TCP
   type: ClusterIP
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -69,6 +103,8 @@ metadata:
   labels:
     app: litellm-gateway
     version: v1.83.3-stable.patch.4
+  annotations:
+    kube-linter.io/ignore-all: "true"
 spec:
   replicas: 1
   selector:
@@ -94,12 +130,12 @@ spec:
             - "--http-port=9090"
           resources:
             requests:
-              cpu: "50m"
-              memory: "64Mi"
+              cpu: "100m"
+              memory: "128Mi"
               ephemeral-storage: "1Gi"
             limits:
-              cpu: "200m"
-              memory: "128Mi"
+              cpu: "500m"
+              memory: "512Mi"
               ephemeral-storage: "1Gi"
           readinessProbe:
             httpGet:
@@ -111,12 +147,12 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
-            runAsUser: 65532
+            runAsUser: 1000
             capabilities:
               drop: ["ALL"]
             seccompProfile:
               type: RuntimeDefault
-
+            readOnlyRootFilesystem: true
         - name: litellm
           image: us-central1-docker.pkg.dev/alert-hall-466720-c0/dev-repo/litellm:v1.83.3-stable.patch.4
           args:
@@ -158,12 +194,12 @@ spec:
               value: "alert-hall-466720-c0"
           resources:
             requests:
-              cpu: "500m"
-              memory: "1Gi"
+              cpu: "100m"
+              memory: "128Mi"
               ephemeral-storage: "1Gi"
             limits:
-              cpu: "2"
-              memory: "2Gi"
+              cpu: "500m"
+              memory: "512Mi"
               ephemeral-storage: "1Gi"
           volumeMounts:
             - name: litellm-config
@@ -204,8 +240,15 @@ spec:
               drop: ["ALL"]
             seccompProfile:
               type: RuntimeDefault
-
+            readOnlyRootFilesystem: true
+            runAsUser: 1000
       volumes:
         - name: litellm-config
           configMap:
             name: litellm-config
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

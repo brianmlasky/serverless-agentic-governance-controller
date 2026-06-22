@@ -1,13 +1,12 @@
 customRules:
-  falco_rules.local.yaml: |-
-    - rule: Terminal Shell in SAGC Container
-      desc: Detects an attempt to spawn an interactive shell inside the governance proxy container. This is a severe indicator of compromise (RCE).
-      condition: >
-        spawned_process and container
-        and container.image.repository contains "agentic-proxy-repo"
-        and proc.name in (shell_binaries)
-      output: >
-        CRITICAL: Shell spawned in SAGC proxy container! 
-        (user=%user.name container_id=%container.id image=%container.image.repository shell=%proc.name cmdline=%proc.cmdline)
-      priority: CRITICAL
-      tags: [container, mitre_execution, pci, incident_response]
+  falco_rules.local.yaml: "- rule: Terminal Shell in SAGC Container\n  desc: Detects an attempt to spawn an interactive shell inside the governance proxy container. This is a severe indicator of compromise (RCE).\n  condition: >\n    spawned_process and container\n    and container.image.repository contains \"agentic-proxy-repo\"\n    and proc.name in (shell_binaries)\n  output: >\n    CRITICAL: Shell spawned in SAGC proxy container! \n    (user=%user.name container_id=%container.id image=%container.image.repository shell=%proc.name cmdline=%proc.cmdline)\n  priority: CRITICAL\n  tags: [container, mitre_execution, pci, incident_response]"
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

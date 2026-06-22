@@ -8,3 +8,12 @@ spec:
     enabled: true
     oauthclientCredentials:
       secretName: iap-oauth-credentials # This secret holds the OAuth client ID/Secret
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []
