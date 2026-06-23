@@ -4,14 +4,14 @@ metadata:
   name: enforce-opa-sidecar-routing
   namespace: sagc
 spec:
-  # Apply this policy to the LLM Gateway pods
   podSelector:
     matchLabels:
       app: llm-gateway
   policyTypes:
   - Ingress
+  - Egress
   ingress:
-  # ONLY allow traffic FROM pods labeled 'app: controller' (your SAGC)
+  # ONLY allow traffic from the controller
   - from:
     - podSelector:
         matchLabels:
@@ -19,3 +19,9 @@ spec:
     ports:
     - protocol: TCP
       port: 8080
+  egress:
+  # Gateway can only reply back to the controller or external APIs
+  - to:
+    - podSelector:
+        matchLabels:
+          app: controller

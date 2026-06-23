@@ -6,6 +6,7 @@ metadata:
   labels:
     app: sagc-controller
 spec:
+      serviceAccountName: sagc-controller-sa
   replicas: 2
   selector:
     matchLabels:
@@ -15,6 +16,7 @@ spec:
       labels:
         app: sagc-controller
     spec:
+      serviceAccountName: sagc-controller-sa
       containers:
         - name: controller
           # In a real CI/CD pipeline, this would be your Google Artifact Registry image path
@@ -67,7 +69,9 @@ spec:
                 topologyKey: kubernetes.io/hostname
   jobTemplate:
     spec:
+      serviceAccountName: sagc-controller-sa
       template:
         spec:
+      serviceAccountName: sagc-controller-sa
           containers: []
   containers: []
