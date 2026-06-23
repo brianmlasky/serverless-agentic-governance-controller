@@ -27,7 +27,7 @@ resource "google_secret_manager_secret_iam_member" "litellm_accessor" {
 
   # This implicit reference resolves the race condition by forcing Terraform to 
   # wait until the service account API fully propagates the identity.
-  member = "serviceAccount:${google_service_account.litellm_wif.email}"
+  member = "serviceAccount:litellm-wif-sa@${var.project_id}.iam.gserviceaccount.com"
 
   depends_on = [
     google_secret_manager_secret.llm_api_key
