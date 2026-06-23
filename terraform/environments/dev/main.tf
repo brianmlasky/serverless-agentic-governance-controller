@@ -70,7 +70,7 @@ module "gke_autopilot" {
   project_id          = var.project_id
   region              = var.region
   environment         = var.environment
-  cluster_name        = "sagc-cluster" # <-- ADD THIS LINE
+  cluster_name        = "sagc-cluster"
   network_name        = module.networking.network_name
   subnetwork_name     = module.networking.subnetwork_name
   pods_range_name     = module.networking.pods_range_name
@@ -90,7 +90,6 @@ module "aws_iam" {
   gke_cluster_name     = var.gke_cluster_name
   k8s_namespace        = "agentic"
   k8s_service_account  = "litellm-wif-sa"
-
 }
 
 # ── GitHub Actions CI/CD Service Account ──────────────────────────────────
@@ -158,4 +157,14 @@ module "workload_identity" {
   project_roles          = ["roles/cloudsql.client"]
 
   depends_on = [module.gke_autopilot, module.aws_iam]
+}
+
+# ── High-Availability Memorystore (Redis) ─────────────────────────────────
+module "redis" {
+  source     = "../../modules/redis"
+  project_id = var.project_id
+  region     = var.region
+  
+  # Connects the Redis instance to the VPC managed by the networking module
+  network_id = module.networking.network_id 
 }
