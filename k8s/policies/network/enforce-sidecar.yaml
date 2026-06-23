@@ -12,14 +12,17 @@ spec:
   - Egress
   ingress:
   - from:
-    - podSelector:
+    - serviceAccountSelector:
         matchLabels:
-          app: controller
+          name: sagc-controller-sa
     ports:
     - protocol: TCP
       port: 8080
   egress:
   - to:
-    - podSelector:
+    - serviceAccountSelector:
         matchLabels:
-          app: controller\n
+          name: sagc-controller-sa
+    ports:
+    - protocol: TCP
+      port: 6379

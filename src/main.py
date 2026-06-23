@@ -4,6 +4,7 @@ import json
 import sys
 import os
 import logging
+from datetime import datetime  # <-- Add this line
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis, ConnectionPool
@@ -34,10 +35,12 @@ return count
 LUA_DEDUCTION_SCRIPT = """
 local budget_key = KEYS[1]
 local cost = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2]) or 2592000  -- 30 days default
 local current = tonumber(redis.call('GET', budget_key) or 0)
 
 if current >= cost then
     redis.call('DECRBY', budget_key, cost)
+    redis.call('expire', budget_key, ttl)  -- <-- Memory leak prevented
     return 1
 else
     return 0
@@ -118,17 +121,20 @@ async def check_audit_rate_limit(agent_id: str) -> bool:
         return False # Fail-closed
 
 async def emit_audit_event(event_type, status, agent_id, details):
-    if not await check_audit_rate_limit(agent_id):
-        return
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "event": event_type,
-        "status": status,
-        "agent_id": agent_id,
-        "details": details
-    }
-    sys.stdout.write(json.dumps(log_entry) + "\n")
-    sys.stdout.flush()
+    # Always emit critical fiscal events, rate limit only verbose logs
+    log_critical = True if (event_type == "fiscal" or status == "deny") else await check_audit_rate_limit(agent_id)
+    
+    if log_critical:
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "event": event_type,
+            "status": status,
+            "agent_id": agent_id,
+            "details": details,
+            "priority": "CRITICAL" if status == "deny" else "INFO"
+        }
+        sys.stdout.write(json.dumps(log_entry) + "\n")
+        sys.stdout.flush()
 
 @app.post("/v1/chat/completions")
 async def handle_request(request: Request):
@@ -150,7 +156,7 @@ async def handle_request(request: Request):
             
         # 2. Atomic Budget Deduction
         result = await redis_breaker.call(
-            redis_pool.evalsha(deduction_sha, 1, f"budget:{agent_id}", cost)
+            redis_pool.evalsha(deduction_sha, 1, f"budget:{agent_id}", cost, 2592000)
         )
         
         if result == 1:
