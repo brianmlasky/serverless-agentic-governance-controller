@@ -38,3 +38,9 @@ variable "project_roles" {
   type        = list(string)
   default     = []
 }
+
+variable "sagc_fencing_secret_id" {
+  description = "The ID of the fencing secret in GCP"
+  type        = string
+  default     = ""
+}

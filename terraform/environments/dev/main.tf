@@ -155,6 +155,9 @@ module "workload_identity" {
   environment            = var.environment
   gke_cluster_dependency = module.gke_autopilot.cluster_name
   project_roles          = ["roles/cloudsql.client"]
+  
+  # F4 Fix: Pass the secret ID into the module
+  sagc_fencing_secret_id = google_secret_manager_secret.sagc_fencing_secret.id
 
   depends_on = [module.gke_autopilot, module.aws_iam]
 }
