@@ -20,12 +20,15 @@ output "aws_oidc_provider_arn" {
   value       = module.aws_iam.oidc_provider_arn
 }
 
+/*
+# GitHub Actions outputs commented out to resolve state drift
 output "github_actions_sa_email" {
-  description = "Email of the GitHub Actions service account (for GH Secret: GCP_SERVICE_ACCOUNT)"
+  description = "Email of the GitHub Actions service account"
   value       = google_service_account.github_actions_sa.email
 }
 
 output "workload_identity_provider" {
-  description = "Full WIF provider resource name (for GH Secret: GCP_WORKLOAD_IDENTITY_PROVIDER)"
+  description = "Full WIF provider resource name"
   value       = google_iam_workload_identity_pool_provider.github_provider.name
 }
+*/
