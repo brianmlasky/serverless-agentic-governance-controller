@@ -22,4 +22,4 @@ spec:
   - to:
     - podSelector:
         matchLabels:
-          app: controller
+          app: controller\n
