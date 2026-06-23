@@ -33,3 +33,31 @@ resource "google_secret_manager_secret_iam_member" "litellm_accessor" {
     google_secret_manager_secret.llm_api_key
   ]
 }
+
+# 1. Generate a high-entropy 32-character cryptographic secret
+resource "random_password" "fencing_secret_value" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+# 2. Define the Google Secret Manager resource
+resource "google_secret_manager_secret" "sagc_fencing_secret" {
+  secret_id = "sagc-fencing-secret"
+  
+  replication {
+    auto {}
+  }
+
+  labels = {
+    environment = var.environment
+    component   = "sagc-governance"
+    finops-tier = "critical"
+  }
+}
+
+# 3. Store the generated password inside the GCP Secret
+resource "google_secret_manager_secret_version" "sagc_fencing_secret_version" {
+  secret      = google_secret_manager_secret.sagc_fencing_secret.id
+  secret_data = random_password.fencing_secret_value.result
+}
