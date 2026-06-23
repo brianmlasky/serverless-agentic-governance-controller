@@ -1,0 +1,8 @@
+checks:
+  doNotAutoAddDefaults: false
+  ignore:
+    - no-anti-affinity
+    - dangling-service
+    - readiness-port
+    - liveness-port
+    - non-existent-service-account

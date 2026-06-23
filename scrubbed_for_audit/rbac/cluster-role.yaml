@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agentic-platform:cloud-metadata-reader
+  labels:
+    app.kubernetes.io/part-of: serverless-agentic-platform
+    app.kubernetes.io/component: rbac
+    cost-center: agent-logic
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces"]
+    verbs: ["get", "list"]

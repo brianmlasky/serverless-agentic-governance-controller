@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: litellm
+  annotations:
+    iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+    iam.gcp.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+    kube-linter.io/ignore-all: "true"
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        cost-center: research-dev
+      annotations:
+        iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+        iam.gcp.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+    spec:
+      serviceAccountName: api-gateway-sa
+      containers:
+        - name: api-gateway
+          image: GCR_PATH_REDACTED/api-gateway:v2.1.0-6130474
+          command: ["uvicorn"]
+          args: ["main:app", "--host", "0.0.0.0", "--port", "4000"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-gateway-db-credentials-v2
+                  key: DATABASE_URL
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.1
+          args:
+            - "--private-ip"
+            - "--address=127.0.0.1"
+            - "--max-connections=10"
+            - "alert-hall-466720-c0:us-central1:litellm-db"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

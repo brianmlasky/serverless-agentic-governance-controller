@@ -1,0 +1,37 @@
+name: "Infrastructure Drift Detection"
+
+on:
+  schedule:
+    # Run at 12:00 UTC every day
+    - cron: '0 12 * * *'
+  workflow_dispatch: # Allows you to run it manually from the GitHub UI
+
+jobs:
+  drift-detection:
+    name: "Detect State Drift"
+    runs-on: ubuntu-latest
+    # Required permissions to request the OIDC token from Google Cloud
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/sagc-pool/providers/github-actions'
+          service_account: 'sagc-terraform-sa@alert-hall-466720-c0.iam.gserviceaccount.com'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan (Drift Check)
+        # The -detailed-exitcode flag returns 0 if no drift, 1 if error, 2 if drift exists
+        run: terraform plan -detailed-exitcode

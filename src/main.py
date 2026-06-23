@@ -60,3 +60,15 @@ async def handle_request(request: Request):
         return {"status": "ok"}
     else:
         return {"status": "denied"}, 403
+from security import validate_fencing_token
+
+# Updated pipeline check
+def check_budget_with_fencing(agent_id, cost, provided_token):
+    # Fetch previous token from Redis
+    prev_token = redis_client.get(f"{agent_id}:fencing_token_previous") or "genesis"
+    
+    if not validate_fencing_token(agent_id, provided_token, prev_token.decode('utf-8')):
+        emit_audit_event("fiscal", "deny", agent_id, {"reason": "INVALID_FENCING_TOKEN"})
+        return "DENY"
+        
+    return check_budget(agent_id, cost)

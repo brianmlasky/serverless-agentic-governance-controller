@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: enforce-opa-sidecar-routing
+  namespace: sagc
+spec:
+  # Apply this policy to the LLM Gateway pods
+  podSelector:
+    matchLabels:
+      app: llm-gateway
+  policyTypes:
+  - Ingress
+  ingress:
+  # ONLY allow traffic FROM pods labeled 'app: controller' (your SAGC)
+  - from:
+    - podSelector:
+        matchLabels:
+          app: controller
+    ports:
+    - protocol: TCP
+      port: 8080

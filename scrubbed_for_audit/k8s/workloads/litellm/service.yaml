@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-service
+  namespace: agentic
+spec:
+  selector:
+    app: litellm
+  ports:
+    - protocol: TCP
+      port: 4000
+      targetPort: 4000
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

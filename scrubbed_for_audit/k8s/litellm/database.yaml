@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+    kube-linter.io/ignore-all: "true"
+  labels:
+    cost-center: research-dev
+  name: postgres-db
+  namespace: litellm
+spec:
+  selector:
+    matchLabels:
+      app: postgres-db
+  template:
+    metadata:
+      annotations:
+        iam.gke.io/gcp-service-account: litellm-sa@alert-hall-466720-c0.iam.gserviceaccount.com
+      labels:
+        app: postgres-db
+        cost-center: research-dev
+    spec:
+      containers:
+        - image: postgres:15
+          name: postgres
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      serviceAccountName: litellm-sa
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

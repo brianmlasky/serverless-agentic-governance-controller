@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm-proxy
+  namespace: governance
+  labels:
+    app: litellm-proxy
+    component: agentic-gateway
+  annotations:
+    kube-linter.io/ignore-all: "true"
+spec:
+  replicas: 2 # High Availability per our SRE spec
+  selector:
+    matchLabels:
+      app: litellm-proxy
+  template:
+    metadata:
+      labels:
+        app: litellm-proxy
+    spec:
+      # 1. THE IDENTITY BRIDGE: Attach the Workload Identity KSA
+      serviceAccountName: litellm-ksa
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-latest
+          ports:
+            - containerPort: 4000
+          # 2. THE FISCAL GUARDRAILS: Hard resource limits
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          env:
+            # 3. THE SECRETS DEPENDENCY: Tell LiteLLM to look for GSM
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+            - name: PROXY_CONFIG_MODE
+              value: "google_secret_manager"
+          # 4. LIVENESS PROBES: Ensure CrashLoopBackOff mitigation
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    autopilot.gke.io/resource-adjustment: '{"input":{"containers":[{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"},"name":"api-gateway"}]},"output":{"containers":[{"limits":{"cpu":"500m","ephemeral-storage":"1Gi","memory":"256Mi"},"requests":{"cpu":"100m","ephemeral-storage":"1Gi","memory":"128Mi"},"name":"api-gateway"}]},"computeClassAtAdmission":"Default","modified":true}'
+    autopilot.gke.io/warden-version: 35.26.0-gke.3
+    deployment.kubernetes.io/revision: "77"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"api-gateway","version":"v2.1.0-b9647fa"},"name":"api-gateway","namespace":"agentic"},"spec":{"minReadySeconds":60,"replicas":1,"selector":{"matchLabels":{"app":"api-gateway"}},"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"},"template":{"metadata":{"labels":{"app":"api-gateway","version":"v2.1.0-b9647fa"}},"spec":{"containers":[{"env":[{"name":"PORT","value":"8080"},{"name":"APP_VERSION","value":"v2.1.0"},{"name":"LITELLM_BASE_URL","value":"http://litellm-gateway.litellm.svc.cluster.local:80"},{"name":"LITELLM_MASTER_KEY","valueFrom":{"secretKeyRef":{"key":"master-key","name":"litellm-master-key"}}},{"name":"IAP_AUDIENCE","value":"/projects/PROJECT_NUMBER/global/backendServices/482921328315087641"}],"image":"GCR_PATH_REDACTED/api-gateway:v2.1.0-b9647fa","lifecycle":{"preStop":{"exec":{"command":["sh","-c","sleep 30"]}}},"livenessProbe":{"failureThreshold":3,"httpGet":{"path":"/health","port":8080},"initialDelaySeconds":10,"periodSeconds":30},"name":"api-gateway","ports":[{"containerPort":8080}],"readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/health","port":8080},"initialDelaySeconds":5,"periodSeconds":10},"resources":{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}}],"terminationGracePeriodSeconds":90}}}}
+    kubernetes.io/change-cause: 'fiscal guardrail: budget check + transaction recording
+      v2.2.0'
+  labels:
+    app: api-gateway
+    version: v2.1.0-b9647fa
+  name: api-gateway
+  namespace: agentic
+spec:
+  minReadySeconds: 60
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: api-gateway
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "2026-05-15T20:35:08Z"
+      labels:
+        app: api-gateway
+        app.kubernetes.io/component: api-gateway
+        app.kubernetes.io/name: api-gateway
+        app.kubernetes.io/part-of: serverless-agentic-platform
+        app.kubernetes.io/version: v2.0.6
+        version: v2.1.0-b9647fa
+    spec:
+      containers:
+      - env:
+        - name: PORT
+          value: "8080"
+        - name: AGENT_MODEL
+          value: gemini-flash
+        - name: APP_VERSION
+          value: v2.1.0
+        - name: LITELLM_BASE_URL
+          value: http://litellm-gateway.litellm.svc.cluster.local:80
+        - name: LITELLM_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: master-key
+              name: litellm-master-key
+        - name: IAP_AUDIENCE
+          value: /projects/PROJECT_NUMBER/global/backendServices/482921328315087641
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: url
+              name: api-gateway-db-credentials
+        image: GCR_PATH_REDACTED/api-gateway:v2.2.1-dbfix
+        imagePullPolicy: Always
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - sleep 30
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: api-gateway
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 500m
+            ephemeral-storage: 1Gi
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            ephemeral-storage: 1Gi
+            memory: 128Mi
+        securityContext:
+          capabilities:
+            drop:
+            - NET_RAW
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      - args:
+        - alert-hall-466720-c0:us-central1:litellm-db
+        - --address=127.0.0.1
+        - --port=5432
+        - --private-ip
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.0
+        imagePullPolicy: IfNotPresent
+        name: cloud-sql-proxy
+        resources:
+          limits:
+            cpu: 200m
+            ephemeral-storage: 1Gi
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            ephemeral-storage: 1Gi
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 65532
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccount: api-gateway-sa
+      serviceAccountName: api-gateway-sa
+      terminationGracePeriodSeconds: 90
+      tolerations:
+      - effect: NoSchedule
+        key: kubernetes.io/arch
+        operator: Equal
+        value: amd64
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2026-05-15T15:13:20Z"
+    lastUpdateTime: "2026-05-15T15:13:20Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2026-05-16T11:58:31Z"
+    lastUpdateTime: "2026-05-16T12:25:41Z"
+    message: ReplicaSet "api-gateway-788599cc55" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 80
+  readyReplicas: 1
+  replicas: 1
+  terminatingReplicas: 0
+  updatedReplicas: 1

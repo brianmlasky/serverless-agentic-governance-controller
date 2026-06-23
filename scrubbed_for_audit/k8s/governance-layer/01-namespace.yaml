@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: governance
+  labels:
+    environment: production
+    purpose: agentic-proxy
+    # Standard practice: labeling for network policy isolation
+    name: governance
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

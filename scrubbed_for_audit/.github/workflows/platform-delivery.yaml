@@ -1,0 +1,71 @@
+name: Platform Delivery & Compliance
+
+on:
+  push:
+    branches: [ main ]
+
+# Proactive governance: Opt into Node 24 ahead of the June 16 deprecation deadline
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  compliance-and-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ... (your existing infrastructure steps)
+
+  container-security-scan:
+    name: Build & Scan Controller Image
+    runs-on: ubuntu-latest
+    needs: compliance-and-infrastructure
+    
+    # Critical: Grant explicit permissions required for the OIDC id-token exchange
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build Controller Docker Image
+        run: docker build -t sagc-controller:ci-test .
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'sagc-controller:ci-test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: .trivyignore
+
+      - name: Authenticate to Google Cloud via WIF
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: 'alert-hall-466720-c0'
+          workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/sagc-pool/providers/github-actions'
+          service_account: 'sagc-controller@alert-hall-466720-c0.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Authenticate Docker to the Artifact Registry region
+      - name: Configure Docker for GCP Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      # Tag the image using the unique GitHub commit SHA for strict traceability
+      - name: Tag Container Image
+        run: |
+          docker tag sagc-controller:ci-test GCR_PATH_REDACTED/sagc-controller:${{ github.sha }}
+          docker tag sagc-controller:ci-test GCR_PATH_REDACTED/sagc-controller:latest
+
+      # Push the image to the governed supply chain boundary
+      - name: Push to Artifact Registry
+        run: |
+          docker push GCR_PATH_REDACTED/sagc-controller:${{ github.sha }}
+          docker push GCR_PATH_REDACTED/sagc-controller:latest

@@ -1,0 +1,31 @@
+package sagc.authz
+
+# Mocking the data for the test
+test_deny_insufficient_funds {
+    # Define an input that simulates a POST request with an empty-budget agent
+    mock_input := {
+        "attributes": {
+            "request": {
+                "http": {
+                    "method": "POST",
+                    "path": "/v1/chat/completions",
+                    "headers": {"x-internal-agent-id": "empty-budget-agent"}
+                }
+            }
+        }
+    }
+
+    # Define the mock budget state
+    mock_data := {
+        "budgets": {
+            "empty-budget-agent": {"remaining_tokens": 0}
+        }
+    }
+
+    # Execute the OPA policy
+    res := envoy_response with input as mock_input with data as mock_data
+    
+    # Assert the outcome
+    res.http_status == 402
+    res.body == "{\"error\": \"SAGC Guardrail Triggered: INSUFFICIENT_FUNDS\", \"enforcement\": \"opa-sidecar\"}"
+}

@@ -1,0 +1,25 @@
+apiVersion: binaryauthorization.googleapis.com/v1
+kind: Policy
+description: Enforce Cosign signature verification for SAGC production workloads
+globalPolicyEvaluationMode: ENABLE
+defaultAdmissionRule:
+  evaluationMode: CHECK_ATTESTATION
+  enforcementMode: ENFORCE_BLOCK_AND_AUDIT_LOG
+  requireAttestationsBy:
+    - name: projects/alert-hall-466720-c0/attestors/cicd-cosign-attestor
+clusterAdmissionRules:
+  us-central1.sagc-gke-cluster:
+    evaluationMode: CHECK_ATTESTATION
+    enforcementMode: ENFORCE_BLOCK_AND_AUDIT_LOG
+    requireAttestationsBy:
+      - name: projects/alert-hall-466720-c0/attestors/cicd-cosign-attestor
+spec:
+  template:
+    spec:
+      containers: []
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

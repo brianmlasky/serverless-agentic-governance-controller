@@ -1,3 +1,5 @@
+from datetime import datetime
+import sys
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 import logging
@@ -58,3 +60,60 @@ async def get_metrics():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+# --- SAGC Principal-Level Fiscal Logic ---
+
+LUA_DEDUCTION_SCRIPT = """
+local budget_key = KEYS[1]
+local cost = tonumber(ARGV[1])
+local agent_id = ARGV[2]
+local current = tonumber(redis.call('GET', budget_key) or 0)
+
+if current >= cost then
+    redis.call('DECRBY', budget_key, cost)
+    return 1
+else
+    return 0
+end
+"""
+
+def check_budget(agent_id, cost):
+    """
+    Principal-level implementation: Fail-Closed.
+    If Redis or network is down, we DENY the request to ensure fiscal integrity.
+    """
+    try:
+        # Atomic check-and-decrement via Lua
+        result = redis_client.eval(LUA_DEDUCTION_SCRIPT, 1, f"budget:{agent_id}", cost, agent_id)
+        return "ALLOW" if result == 1 else "DENY"
+    except Exception as e:
+        # FAIL-CLOSED: The only production-grade posture for fiscal governance
+        emit_audit_event("fiscal", "deny", agent_id, {"reason": "REDIS_OUTAGE", "error": str(e)})
+        return "DENY"
+
+# In-memory rate limiter for local log spam prevention
+_audit_log_counts = {}
+
+def is_audit_rate_limited(agent_id):
+    now = datetime.now().minute
+    count = _audit_log_counts.get((agent_id, now), 0)
+    if count > 100: # Max 100 events per minute per agent
+        return True
+    _audit_log_counts[(agent_id, now)] = count + 1
+    return False
+
+def emit_audit_event(event_type, status, agent_id, details):
+    """
+    Standardized log emitter for the SAGC Audit Sink.
+    """
+    if is_audit_rate_limited(agent_id):
+        return
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "event": "fiscal_event" if event_type == "fiscal" else "governance_event",
+        "status": status,
+        "agent_id": agent_id,
+        "details": details,
+        "version": "1.0"
+    }
+    sys.stdout.write(json.dumps(log_entry) + "\n")
+    sys.stdout.flush()

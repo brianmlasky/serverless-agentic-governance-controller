@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: agentic
+  labels:
+    app: api-gateway
+    version: v2.1.0-6130474
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  minReadySeconds: 60
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        version: v2.1.0-6130474
+    spec:
+      terminationGracePeriodSeconds: 90
+      containers:
+        - name: api-gateway
+          image: GCR_PATH_REDACTED/api-gateway:v2.1.0-6130474
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: APP_VERSION
+              value: "v2.1.0"
+            - name: LITELLM_BASE_URL
+              value: "http://litellm-gateway.agentic.svc.cluster.local:80"
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-master-key
+                  key: master-key
+            - name: IAP_AUDIENCE
+              value: "/projects/PROJECT_NUMBER/global/backendServices/482921328315087641"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 30"]
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers: []
+  containers: []

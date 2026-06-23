@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LiteLLM Gateway — HorizontalPodAutoscaler
+#
+# Memory baseline: 780-820Mi is the immutable minimum for LiteLLM 1.82.x
+# on Python 3.13 (788Mi anonymous heap, 33Mi file-backed .so pages).
+# With a 1Gi request, idle utilization is ~77%.
+#
+# HPA target is 90% (not 80%) so that 77% idle sits clearly below the
+# scale-up threshold. Scale-up only triggers under genuine request load.
+#
+# Cost center: research-dev  (AI inference workload billing bucket)
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: litellm-gateway-hpa
+  namespace: litellm
+  annotations:
+    memory-baseline-mi: "780"
+    memory-request: "1Gi"
+    change-reason: >
+      780Mi is fixed LiteLLM 1.82.x / Python 3.13 baseline.
+      90% target keeps idle 2-replica state stable (77% < 90%).
+      Scale-up fires only under real traffic pressure.
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: litellm-gateway
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 90
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+      selectPolicy: Max
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Max

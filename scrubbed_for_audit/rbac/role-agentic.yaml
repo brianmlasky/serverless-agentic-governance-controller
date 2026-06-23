@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agentic-platform:pod-reader
+  namespace: agentic
+  labels:
+    app.kubernetes.io/part-of: serverless-agentic-platform
+    app.kubernetes.io/component: rbac
+    cost-center: agent-logic
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
