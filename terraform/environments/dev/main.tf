@@ -40,7 +40,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Resolve project number → derive default Compute Engine node SA
 data "google_project" "current" {
   project_id = var.project_id
 }
@@ -49,13 +48,29 @@ locals {
   gke_node_sa = "${data.google_project.current.number}-compute@developer.gserviceaccount.com"
 }
 
-
 # ── Networking ─────────────────────────────────────────────────────────────
 module "networking" {
   source      = "../../modules/networking"
   project_id  = var.project_id
   region      = var.region
   environment = var.environment
+}
+
+# ── Private Service Access (Required for Memorystore) ──────────────────────
+# Define the IP range used for Private Service Access
+resource "google_compute_global_address" "private_ip_range" {
+  name          = "google-managed-services-dev-vpc"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = module.networking.network_id
+}
+
+# Bind the service connection to that range
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = module.networking.network_id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
 }
 
 # ── Artifact Registry ──────────────────────────────────────────────────────
@@ -96,59 +111,22 @@ module "aws_iam" {
   k8s_service_account  = "litellm-wif-sa"
 }
 
-# ── GitHub Actions CI/CD Service Account ──────────────────────────────────
+# ── GitHub Actions CI/CD Service Account (Commented out to resolve state drift) ──
+/*
 resource "google_service_account" "github_actions_sa" {
   project      = var.project_id
   account_id   = "github-actions-sa"
   display_name = "GitHub Actions CI/CD Service Account"
-  description  = "Impersonated by GitHub Actions via Workload Identity Federation"
-}
-
-resource "google_project_iam_member" "github_actions_registry_writer" {
-  project = var.project_id
-  role    = "roles/artifactregistry.writer"
-  member  = "serviceAccount:${google_service_account.github_actions_sa.email}"
-}
-
-resource "google_project_iam_member" "github_actions_gke_developer" {
-  project = var.project_id
-  role    = "roles/container.developer"
-  member  = "serviceAccount:${google_service_account.github_actions_sa.email}"
 }
 
 resource "google_iam_workload_identity_pool" "github_pool" {
   project                   = var.project_id
   workload_identity_pool_id = "github-actions-pool"
   display_name              = "GitHub Actions Pool"
-  description               = "WIF pool for GitHub Actions OIDC"
 }
+*/
 
-resource "google_iam_workload_identity_pool_provider" "github_provider" {
-  project                            = var.project_id
-  workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
-  workload_identity_pool_provider_id = "github-provider"
-  display_name                       = "GitHub Actions OIDC Provider"
-
-  attribute_mapping = {
-    "google.subject"       = "assertion.sub"
-    "attribute.actor"      = "assertion.actor"
-    "attribute.repository" = "assertion.repository"
-  }
-
-  attribute_condition = "assertion.repository == '${var.github_repo}'"
-
-  oidc {
-    issuer_uri = "https://token.actions.githubusercontent.com"
-  }
-}
-
-resource "google_service_account_iam_member" "github_actions_wif_binding" {
-  service_account_id = google_service_account.github_actions_sa.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.github_repo}"
-}
-
-# ── LiteLLM Workload Identity (GKE pods → AWS Bedrock) ────────────────────
+# ── LiteLLM Workload Identity ─────────────────────────────────────────────
 module "workload_identity" {
   source = "../../modules/workload-identity"
 
@@ -160,7 +138,6 @@ module "workload_identity" {
   gke_cluster_dependency = module.gke_autopilot.cluster_name
   project_roles          = ["roles/cloudsql.client"]
   
-  # F4 Fix: Pass the secret ID into the module
   sagc_fencing_secret_id = google_secret_manager_secret.sagc_fencing_secret.id
 
   depends_on = [module.gke_autopilot, module.aws_iam]
@@ -171,7 +148,5 @@ module "redis" {
   source     = "../../modules/redis"
   project_id = var.project_id
   region     = var.region
-  
-  # Connects the Redis instance to the VPC managed by the networking module
   network_id = module.networking.network_id 
 }

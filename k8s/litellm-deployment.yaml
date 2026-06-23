@@ -5,10 +5,10 @@ metadata:
     app: litellm-gateway
     cost-center: research-dev
   name: litellm-gateway
-  namespace: litellm
+  namespace: agentic
 spec:
   progressDeadlineSeconds: 600
-  replicas: 0
+  replicas: 1
   revisionHistoryLimit: 10
   selector:
     matchLabels:
@@ -26,8 +26,13 @@ spec:
         app: litellm-gateway
         cost-center: research-dev
     spec:
+      serviceAccount: litellm-wif-sa
+      serviceAccountName: litellm-wif-sa
       containers:
-        - args:
+        - name: litellm
+          image: ghcr.io/berriai/litellm@sha256:7c311546c25e7bb6e8cafede9fcd3d0d622ac636b5c9418befaa32e85dfb0186
+          imagePullPolicy: IfNotPresent
+          args:
             - --config
             - /app/config/config.yaml
           env:
@@ -42,10 +47,10 @@ spec:
                 secretKeyRef:
                   key: master-key
                   name: litellm-master-key
-          image: ghcr.io/berriai/litellm@sha256:7c311546c25e7bb6e8cafede9fcd3d0d622ac636b5c9418befaa32e85dfb0186
-          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+              protocol: TCP
           livenessProbe:
-            failureThreshold: 3
             httpGet:
               path: /health/liveliness
               port: 4000
@@ -54,12 +59,8 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
-          name: litellm
-          ports:
-            - containerPort: 4000
-              protocol: TCP
-          readinessProbe:
             failureThreshold: 3
+          readinessProbe:
             httpGet:
               path: /health/readiness
               port: 4000
@@ -68,6 +69,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
+            failureThreshold: 3
           resources:
             limits:
               cpu: '500m'
@@ -98,8 +100,6 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-      serviceAccount: litellm-sa
-      serviceAccountName: litellm-sa
       terminationGracePeriodSeconds: 30
       tolerations:
         - effect: NoSchedule
@@ -119,9 +119,3 @@ spec:
                   audience: sts.amazonaws.com
                   expirationSeconds: 3600
                   path: aws-token
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers: []
-  containers: []

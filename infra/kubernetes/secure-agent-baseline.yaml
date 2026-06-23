@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sagc-agent-baseline
+  namespace: agentic
+  labels:
+    app: ai-agent
+    governance: strict
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-agent
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+      annotations:
+        # SEC-04: Enforce seccomp profile to restrict kernel syscalls (Mitigates 5.1 Pod Escape)
+        seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+    spec:
+      serviceAccountName: sagc-agent-01-sa
+      # SEC-05: Pod-level security context ensures no privilege escalation
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 2000
+      containers:
+      - name: agent-logic
+        image: your-registry/agent-image:latest
+        securityContext:
+          runAsUser: 1000
+          # SEC-06: Prevent filesystem tampering and socket hijacking (Mitigates 1.2 SPIFFE Spoofing)
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          # SEC-07: Hard memory limits to prevent Node OOM cascading failures (Mitigates 2.3 Exhaustion)
+          limits:
+            cpu: "1000m"
+            memory: "512Mi"
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: tmp-fs
+          mountPath: /tmp
+      
+      # Envoy Sidecar Injection would be handled by the mutating webhook, 
+      # but runs under a distinct UID (e.g., 1337) to prevent cross-container memory access.
+      
+      volumes:
+      - name: tmp-fs
+        emptyDir: {}

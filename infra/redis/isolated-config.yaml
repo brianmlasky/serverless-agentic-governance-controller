@@ -1,0 +1,13 @@
+model_list:
+  - model_name: runaway-target
+    litellm_params:
+      model: "gpt-3.5-turbo"
+      api_key: "sk-mock-key"
+      mock_response: "Structural validation of Fiscal SecOps circuit breaker."
+      tpm: 10000
+litellm_settings:
+  cache: true
+  cache_params:
+    type: "redis"
+    host: "10.252.189.75"
+    port: 6379

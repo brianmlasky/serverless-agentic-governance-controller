@@ -20,13 +20,9 @@ resource "google_redis_instance" "sagc_cache" {
   project        = var.project_id
   region         = var.region
   
-  # Standard Tier provides HA with automatic failover to a replica
   tier           = "STANDARD_HA"
-  
-  # FinOps: Absolute minimum capacity for testing
   memory_size_gb = 1
 
-  # Network peering so the GKE cluster can access it
   authorized_network = var.network_id
   connect_mode       = "PRIVATE_SERVICE_ACCESS"
 
