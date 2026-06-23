@@ -1,29 +1,24 @@
-# 1. Dedicated Service Account for the SAGC Controller
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: sagc-controller-sa
   namespace: sagc
 ---
-# 2. Dedicated Service Account for the LLM Gateway
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: llm-gateway-sa
   namespace: sagc
 ---
-# 3. Restrictive Role: Explicitly Deny Pod Modification
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: sagc-strict-isolation
 rules:
-# Allow basic discovery but explicitly omit 'patch' and 'update'
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch"] 
 ---
-# 4. Bind the restrictive role to our service accounts
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
